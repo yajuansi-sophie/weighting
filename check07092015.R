@@ -1,0 +1,462 @@
+###---------------MRP to Construct Survey Weights--------------###
+###Author: YS
+###Latest Edit date: 07/19/2015
+#setwd("/Users/Shared/GoogleDriveFolder/working/weighting/code")
+#setwd("~/Google Drive/working/weighting/code")
+setwd("~/Documents/weighting/code")
+###clear
+remove(list=objects())
+###code
+#recode arm:rescale
+#----------required packages-----------------#
+#require(arm)
+#require(car)
+require(foreign)
+require(rstan)
+require(survey)
+require(foreach)
+require(doMC)
+source("http://mc-stan.org/rstan/stan.R")
+set.seed(20150213)
+
+#----------data simulation-----------------#
+data<-read.dta("data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
+SRBIdata<-data[data$sample=="SRBI",]
+###ACS data
+acs_pop<-read.dta("data/acs_nyc_2011_wpov1.dta",convert.factors = FALSE)
+acs_ad <- acs_pop[as.numeric(acs_pop$age)>=18,] 
+##age
+age_tr<-acs_ad$age #at least 18
+##
+acs_ad$age_dc<-age_tr #discretization
+acs_ad$age_dc[age_tr<=34]<-1 #18-34
+acs_ad$age_dc[age_tr<=64 & age_tr>34]<-2 #35-64
+acs_ad$age_dc[age_tr>=64]<-3 #65+
+
+SRBIdata$age_dc<-SRBIdata$age
+SRBIdata$age_dc[SRBIdata$age<=34]<-1
+SRBIdata$age_dc[SRBIdata$age<=64 & SRBIdata$age > 34]<-2
+SRBIdata$age_dc[SRBIdata$age > 64]<-3
+
+###sex
+acs_ad$sex<-as.numeric(acs_ad$sex)
+SRBIdata$sex<-as.numeric(as.factor(SRBIdata$r_gender))
+
+###race
+acs_ad$race_dc<-acs_ad$racex
+acs_ad$race_dc[acs_ad$racex==4]<-3
+acs_ad$race_dc[acs_ad$racex==5]<-4
+
+SRBIdata$race_dc<-SRBIdata$race
+SRBIdata$race_dc[SRBIdata$race==4]<-3
+SRBIdata$race_dc[SRBIdata$race==5]<-4
+
+#edu
+#educat 4
+#recode qi5 (1/2=1) (3/4=2) (5/6=3) (7/8=4) (98/99=.), gen(educat)
+SRBIdata$educat<-SRBIdata$edu
+
+#tot.income
+#poverty gap: 1 Under 50%   2 50-100%  3 100-200%  4 200-300%     5 300%+
+acs_ad$opmres_x<-acs_ad$povgap
+SRBIdata$opmres_x<-1
+SRBIdata$opmres_x[SRBIdata$povgap=="3 100-200%"]<-2
+SRBIdata$opmres_x[SRBIdata$povgap=="4 200-300%"]<-3
+SRBIdata$opmres_x[SRBIdata$povgap=="5 300%+"]<-3
+
+#eldx
+acs_ad$eldx_ca<-acs_ad$eldx # 0 1 2+
+acs_ad$eldx_ca[acs_ad$eldx>1]<-2
+SRBIdata$eldx_ca<-SRBIdata$eldx
+SRBIdata$eldx_ca[SRBIdata$eldx>1]<-2
+
+
+#childx 0 1 2 3
+acs_ad$childx_ca<-acs_ad$childx
+acs_ad$childx_ca[acs_ad$childx_ca>2]<-3
+SRBIdata$childx_ca<-SRBIdata$childx
+SRBIdata$childx_ca[SRBIdata$childx_ca>2]<-3
+
+#wax 0 1 2
+acs_ad$wax_ca<-acs_ad$wax
+acs_ad$wax_ca[acs_ad$wax>1]<-2
+SRBIdata$wax_ca<-SRBIdata$wax
+SRBIdata$wax_ca[SRBIdata$wax_ca>1]<-2
+
+#personx 1-4
+acs_ad$personx_ca<-acs_ad$personx
+acs_ad$personx_ca[acs_ad$personx>4]<-4
+SRBIdata$personx_ca<-SRBIdata$personx
+SRBIdata$personx_ca[SRBIdata$personx_ca>4]<-4
+
+#use THE WEIGHTS OF ACS ITSELF
+acs_ds_ad <-svydesign(id=~1, weights=~perwt, data=acs_ad)
+#lay out first variable's values first
+acs_N<-as.numeric(svytable(~opmres_x+
+                             educat+race_dc+sex+age_dc,acs_ds_ad))
+#acs_N<-as.numeric(svytable(~wax_ca+childx_ca+eldx_ca+opmres_x+
+                             #educat+race_dc+sex+age_dc,acs_ds_ad))
+#acs_N<-as.numeric(svytable(~age_dc+sex+race_dc+educat+opmres_x+ eldx_ca+childx_ca+wax_ca,acs_ds_ad))
+
+
+###
+X<-data.frame(age=SRBIdata$age_dc,sex=SRBIdata$sex,eth=SRBIdata$race_dc,edu=SRBIdata$educat,
+              inc=SRBIdata$opmres_x)
+              #eldx=SRBIdata$eldx_ca+1,childx=SRBIdata$childx_ca+1,
+              #wax=SRBIdata$wax_ca+1)
+#sibs_ds_ad <-svydesign(id=~1, weights=~1, data=X)
+
+#lay out first variable's values first
+#n_table<-as.numeric(svytable(~inc+edu+eth+sex+age,sibs_ds_ad))
+
+dat <- data.frame(X)
+remove(list=objects()[!(objects() %in% c("dat","acs_N"))])
+gc()
+#eldx childx wax +1 
+#"imp_incret" "imp_incdis"  "imp_incwelf" "imp_incui"                    
+# "imp_incsnap"  "imp_increg"  "imp_incoth"                   
+# "imp_earnhd"   "imp_earnsp"  "imp_incothhh"   "imp_health"
+#Y<-log(SRBIdata$opmres+0.5)
+#-----------function defination-------------#
+ci_50 <- function(x){quantile(x,c(0.25,0.75))}
+ci_80 <- function(x){quantile(x,c(0.1,0.9))}
+ci_95 <- function(x){quantile(x,c(0.025,0.975))}
+#-----------computation--------------#
+###cell id
+n<-dim(dat)[1] #sample size
+q<-5
+#names(table(dat$age, dat$sex, dat$eth, dat$edu,dat$inc,dat$eldx,dat$childx,dat$wax))
+J_age <- length(unique(dat$age))
+J_sex <- length(unique(dat$sex))
+J_eth <- length(unique(dat$eth))
+J_edu <- length(unique(dat$edu))
+J_inc <- length(unique(dat$inc))
+#J_eldx <- length(unique(dat$eldx))
+#J_childx <- length(unique(dat$childx))
+#J_wax <- length(unique(dat$wax))
+
+cell_id<-rep(0,n)
+cell_str<-matrix(0,J_age*J_sex*J_eth*J_edu*J_inc,q)
+#*J_eldx*J_childx*J_wax
+j<-0
+for (i1 in 1:J_age){
+  for (i2 in 1:J_sex){
+    for (i3 in 1:J_eth){
+      for (i4 in 1:J_edu){
+        for (i5 in 1:J_inc){
+          #for (i6 in unique(dat$eldx)){
+            #for (i7 in unique(dat$childx)){
+              #for (i8 in unique(dat$wax)){
+                j<-j+1
+                cell_id[dat$age==i1 & dat$sex==i2 & dat$eth==i3 & dat$edu==i4 &
+                          dat$inc==i5 ]<-j
+                        #& dat$eldx==i6 & dat$childx==i7 & dat$wax==i8]<-j
+                cell_str[j,]<-c(i1,i2,i3,i4,i5) #,i6,i7,i8
+        }
+      }
+    }
+  }
+}
+J<-length(unique(cell_id))
+(1:288)[! (1:288) %in% as.numeric(names(table(cell_id)))]
+n_cell <- as.numeric(table(cell_id))   
+#n_table[(1:j) %in% as.numeric(names(table(cell_id)))]
+N_cell<-acs_N[as.numeric(names(table(cell_id)))]
+#X_n<-as.numeric(table(dat$age,dat$eth,dat$edu))
+plot(N_cell/n_cell)
+hist(N_cell/n_cell)
+summary(N_cell/n_cell)
+sd(N_cell/n_cell)
+
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#218.7  2199.0  3219.0  4830.0  5678.0 34420.0 
+
+#[1] 4859.095
+R<-5
+
+mu_cell<-rep(0,J)
+sigma_y_cell<-rep(0,J)
+
+cover_lambda50<-matrix(0,R,q-1)
+cover_sigma50<-matrix(0,R,q)
+cover_sigmay50<-rep(0,R)
+cover_lambda80<-matrix(0,R,q-1)
+cover_sigma80<-matrix(0,R,q)
+cover_sigmay80<-rep(0,R)
+cover_lambda95<-matrix(0,R,q-1)
+cover_sigma95<-matrix(0,R,q)
+cover_sigmay95<-rep(0,R)
+cover_mu50<-matrix(0,R,J)
+cover_mu80<-matrix(0,R,J)
+cover_mu95<-matrix(0,R,J)
+
+sd_bias<-matrix(0,R,2*q+1)
+mu_bias<-matrix(0,R,J)
+
+lambda_m <- 1
+for (r in 1:R){
+  sigma_y <- abs(rnorm(1,0,1))
+  sigma_m <- abs(rnorm(q,0,1))
+  lambda_inter <-abs(rnorm(q-1,0,1))
+
+  pri_var <- sum(lambda_m^2 * sigma_m^2) + (lambda_inter[1] * sigma_m[1] * sigma_m[2])^2 +
+    (lambda_inter[1] * sigma_m[1] * sigma_m[3])^2 + (lambda_inter[1] * sigma_m[1] * sigma_m[4])^2 +
+    (lambda_inter[1] * sigma_m[1] * sigma_m[5])^2+ (lambda_inter[1] * sigma_m[2] * sigma_m[3])^2 +
+    (lambda_inter[1] * sigma_m[2] * sigma_m[4])^2 + (lambda_inter[1] * sigma_m[2] * sigma_m[5])^2+
+    (lambda_inter[1] * sigma_m[3] * sigma_m[4])^2+ (lambda_inter[1] * sigma_m[3] * sigma_m[5])^2+
+    (lambda_inter[1] * sigma_m[4] * sigma_m[5])^2+
+    (lambda_inter[2] * sigma_m[1] * sigma_m[2]* sigma_m[3])^2 + 
+    (lambda_inter[2] * sigma_m[1] * sigma_m[2]* sigma_m[4])^2 + 
+    (lambda_inter[2] * sigma_m[1] * sigma_m[2]* sigma_m[5])^2 + 
+    (lambda_inter[2] * sigma_m[1] * sigma_m[3]* sigma_m[4])^2 + 
+    (lambda_inter[2] * sigma_m[1] * sigma_m[3]* sigma_m[5])^2 + 
+    (lambda_inter[2] * sigma_m[1] * sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[2] * sigma_m[2] * sigma_m[3]* sigma_m[4])^2 + 
+    (lambda_inter[2] * sigma_m[2] * sigma_m[3]* sigma_m[5])^2 + 
+    (lambda_inter[2] * sigma_m[2] * sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[2] * sigma_m[3] * sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[3] * sigma_m[1] * sigma_m[2]* sigma_m[3]* sigma_m[4])^2 + 
+    (lambda_inter[3] * sigma_m[1] * sigma_m[2]* sigma_m[3]* sigma_m[5])^2 + 
+    (lambda_inter[3] * sigma_m[1] * sigma_m[2]* sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[3] * sigma_m[1] * sigma_m[3]* sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[3] * sigma_m[2] * sigma_m[3]* sigma_m[4]* sigma_m[5])^2 + 
+    (lambda_inter[4] * sigma_m[1] * sigma_m[2]* sigma_m[3]* sigma_m[4]* sigma_m[5])^2 
+  
+  alpha<-rnorm(1)
+  alpha_age <-rnorm(J_age); alpha_sex <- rnorm(J_sex); alpha_eth <-rnorm(J_eth);
+  alpha_edu <- rnorm(J_edu); alpha_inc<-rnorm(J_inc);
+  alpha_age_sex<-rnorm(J_age * J_sex);alpha_age_eth<-rnorm(J_age * J_eth); 
+  alpha_age_edu <-rnorm(J_age * J_edu);alpha_age_inc<-rnorm(J_age * J_inc);
+  alpha_sex_eth<-rnorm(J_sex * J_eth); alpha_sex_edu<-rnorm(J_sex * J_edu);
+  alpha_sex_inc<-rnorm(J_sex * J_inc); alpha_eth_edu <-rnorm(J_eth * J_edu); 
+  alpha_eth_inc<-rnorm(J_eth * J_inc); alpha_edu_inc <-rnorm(J_edu * J_inc); 
+  alpha_age_sex_eth <-rnorm(J_age * J_sex * J_eth);
+  alpha_age_sex_edu <-rnorm(J_age * J_sex * J_edu);
+  alpha_age_sex_inc <-rnorm(J_age * J_sex * J_inc);
+  alpha_age_eth_edu <-rnorm(J_age * J_eth * J_edu);
+  alpha_age_eth_inc <-rnorm(J_age * J_eth * J_inc);
+  alpha_age_edu_inc <-rnorm(J_age * J_edu * J_inc);
+  alpha_sex_eth_edu <-rnorm(J_sex * J_eth * J_edu);
+  alpha_sex_eth_inc <-rnorm(J_sex * J_eth * J_inc);
+  alpha_sex_edu_inc <-rnorm(J_sex * J_edu * J_inc);
+  alpha_eth_edu_inc <-rnorm(J_eth * J_edu * J_inc);  
+  alpha_age_sex_eth_edu <-rnorm(J_age * J_sex * J_eth * J_edu);
+  alpha_age_sex_eth_inc <-rnorm(J_age * J_sex * J_eth * J_inc);
+  alpha_age_sex_edu_inc <-rnorm(J_age * J_sex * J_edu * J_inc);
+  alpha_age_eth_edu_inc <-rnorm(J_age * J_eth * J_edu * J_inc);
+  alpha_sex_eth_edu_inc <-rnorm(J_sex * J_eth * J_edu * J_inc);  
+  alpha_age_sex_eth_edu_inc <-rnorm(J_age * J_sex * J_eth * J_edu * J_inc);  
+  for (j0 in 1:J){
+
+    mu_cell[j0] <- alpha + 
+      alpha_age[cell_str[cell_index[j0],1]] * sigma_m[1] + 
+      alpha_sex[cell_str[cell_index[j0],2]] * sigma_m[2] + 
+      alpha_eth[cell_str[cell_index[j0],3]] * sigma_m[3] +
+      alpha_edu[cell_str[cell_index[j0],4]] * sigma_m[4] + 
+      alpha_inc[cell_str[cell_index[j0],5]] * sigma_m[5] +
+      alpha_age_sex[(cell_str[cell_index[j0],1]-1) * J_sex + cell_str[cell_index[j0],2]] * lambda_inter[1] * sigma_m[1] * sigma_m[2]+
+      alpha_age_eth[(cell_str[cell_index[j0],1]-1) * J_eth + cell_str[cell_index[j0],3]] * lambda_inter[1] * sigma_m[1] * sigma_m[3]+
+      alpha_age_edu[(cell_str[cell_index[j0],1]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[1] * sigma_m[1] * sigma_m[4]+
+      alpha_age_inc[(cell_str[cell_index[j0],1]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[1] * sigma_m[1] * sigma_m[5]+
+      alpha_sex_eth[(cell_str[cell_index[j0],2]-1) * J_eth + cell_str[cell_index[j0],3]] * lambda_inter[1] * sigma_m[2] * sigma_m[3]+
+      alpha_sex_edu[(cell_str[cell_index[j0],2]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[1] * sigma_m[2] * sigma_m[4]+
+      alpha_sex_inc[(cell_str[cell_index[j0],2]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[1] * sigma_m[2] * sigma_m[5]+
+      alpha_eth_edu[(cell_str[cell_index[j0],3]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[1] * sigma_m[3] * sigma_m[4]+
+      alpha_eth_inc[(cell_str[cell_index[j0],3]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[1] * sigma_m[3] * sigma_m[5]+
+      alpha_edu_inc[(cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[1] * sigma_m[4] * sigma_m[5]+
+      alpha_age_sex_eth[(cell_str[cell_index[j0],1]-1) * J_sex * J_eth + (cell_str[cell_index[j0],2]-1) * J_eth + cell_str[cell_index[j0],3]] * lambda_inter[2] * sigma_m[1] * sigma_m[2] * sigma_m[3]+
+      alpha_age_sex_edu[(cell_str[cell_index[j0],1]-1) * J_sex * J_edu + (cell_str[cell_index[j0],2]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[2] * sigma_m[1] * sigma_m[2] * sigma_m[4]+
+      alpha_age_sex_inc[(cell_str[cell_index[j0],1]-1) * J_sex * J_inc + (cell_str[cell_index[j0],2]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[1] * sigma_m[2] * sigma_m[5]+
+      alpha_age_eth_edu[(cell_str[cell_index[j0],1]-1) * J_eth * J_edu + (cell_str[cell_index[j0],3]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[2] * sigma_m[1] * sigma_m[3] * sigma_m[4]+
+      alpha_age_eth_inc[(cell_str[cell_index[j0],1]-1) * J_eth * J_inc + (cell_str[cell_index[j0],3]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[1] * sigma_m[3] * sigma_m[5]+
+      alpha_age_edu_inc[(cell_str[cell_index[j0],1]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[1] * sigma_m[4] * sigma_m[5]+
+      alpha_sex_eth_edu[(cell_str[cell_index[j0],2]-1) * J_eth * J_edu + (cell_str[cell_index[j0],3]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[2] * sigma_m[2] * sigma_m[3] * sigma_m[4]+
+      alpha_sex_eth_inc[(cell_str[cell_index[j0],2]-1) * J_eth * J_inc + (cell_str[cell_index[j0],3]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[2] * sigma_m[3] * sigma_m[5]+
+      alpha_sex_edu_inc[(cell_str[cell_index[j0],2]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[2] * sigma_m[4] * sigma_m[5]+
+      alpha_eth_edu_inc[(cell_str[cell_index[j0],3]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[2] * sigma_m[3] * sigma_m[4] * sigma_m[5]+
+      alpha_age_sex_eth_edu[(cell_str[cell_index[j0],1]-1) * J_sex * J_eth * J_edu + (cell_str[cell_index[j0],2]-1) * J_eth * J_edu + (cell_str[cell_index[j0],3]-1) * J_edu + cell_str[cell_index[j0],4]] * lambda_inter[3] * sigma_m[1] * sigma_m[2] * sigma_m[3]* sigma_m[4]+
+      alpha_age_sex_eth_inc[(cell_str[cell_index[j0],1]-1) * J_sex * J_eth * J_inc + (cell_str[cell_index[j0],2]-1) * J_eth * J_inc + (cell_str[cell_index[j0],3]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[3] * sigma_m[1] * sigma_m[2] * sigma_m[3]* sigma_m[5]+
+      alpha_age_sex_edu_inc[(cell_str[cell_index[j0],1]-1) * J_sex * J_edu * J_inc + (cell_str[cell_index[j0],2]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[3] * sigma_m[1] * sigma_m[2] * sigma_m[4]* sigma_m[5]+
+      alpha_age_eth_edu_inc[(cell_str[cell_index[j0],1]-1) * J_eth * J_edu * J_inc + (cell_str[cell_index[j0],3]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[3] * sigma_m[1] * sigma_m[3] * sigma_m[4]* sigma_m[5]+
+      alpha_sex_eth_edu_inc[(cell_str[cell_index[j0],2]-1) * J_eth * J_edu * J_inc + (cell_str[cell_index[j0],3]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[3] * sigma_m[2] * sigma_m[3] * sigma_m[4]* sigma_m[5]+
+      alpha_age_sex_eth_edu_inc[(cell_str[cell_index[j0],1]-1) * J_sex * J_eth * J_edu * J_inc + (cell_str[cell_index[j0],2]-1) * J_eth * J_edu * J_inc + (cell_str[cell_index[j0],3]-1) * J_edu * J_inc + (cell_str[cell_index[j0],4]-1) * J_inc + cell_str[cell_index[j0],5]] * lambda_inter[4] * sigma_m[1] * sigma_m[2] * sigma_m[3]* sigma_m[4]* sigma_m[5];
+  }
+  
+  for (j in 1:J){
+    sigma_y_cell[j] <- sigma_y / sqrt(n_cell[j]);
+  }
+
+  y_cell <-rnorm(J,mu_cell, sigma_y_cell);
+  ss_cell <-rchisq(1, n-1) * sigma_y^2;
+  cell_index <-as.numeric(names(table(cell_id)))
+
+###-----------------STAN--------------------------###
+
+stan.data_cell <- list(n=nrow(dat),q=q,
+                  J=J, n_cell=n_cell, y_cell=y_cell, ss_cell=ss_cell,
+                  cell_str=cell_str,N_cell=N_cell,
+                  J_age=length(unique(dat$age)),
+                  J_sex=length(unique(dat$sex)),
+                  J_eth=length(unique(dat$eth)),
+                  J_edu=length(unique(dat$edu)),
+                  J_inc=length(unique(dat$inc)),
+                  J_true= J_age * J_sex * J_eth * J_edu * J_inc,
+                  cell_index=cell_index
+                  )
+
+set_cppo("debug")
+S.compile_cell <- stan(file='stan/mrpweights071315.stan',
+                       data=stan.data_cell,
+                       iter=2, chains=1)
+#print(S.compile_cell)
+stan.seed <- round(runif(1,0,9999999))
+n.chains <- 2
+registerDoMC(n.chains)
+st <- system.time(sflist1 <- foreach(i.cores = 1:getDoParWorkers()) %dopar% {
+  S <- stan(fit=S.compile_cell,
+            data=stan.data_cell,
+            iter=500, chains=1, seed=stan.seed, chain_id=i.cores)
+  return(S)
+})[3]
+S <- sflist2stanfit(sflist1)
+
+print(S,pars=c("pri_var","lambda_inter", "sigma_m","sigma_y","w_new","ps_w","mu_cell"),digits=3)
+output<-extract(S, pars=c("pri_var","lambda_inter", "sigma_m","sigma_y","w_new","ps_w","mu_cell"),
+                permuted=TRUE)
+#sink("stan0-fit.txt")
+#monitor(extract(S, permuted = FALSE, inc_warmup = TRUE))
+#sink()
+
+   plot(output$pri_var)
+summary(output$pri_var)
+pri_var
+
+apply(output$lambda_inter,2,mean)
+lambda_inter
+apply(output$sigma_m,2,mean)
+sigma_m
+
+# anova(lm(apply(output$mu_cell,2,mean)~1))
+plot(n_cell, apply(output$w_new,2,mean))
+plot(n_cell, apply(output$ps_w,2,mean))
+
+sd(N_cell/n_cell *n /sum(N_cell))
+sd(apply(output$w_new,2,mean))
+ plot(output$lambda_inter[,1])
+plot(output$lambda_inter[,2])
+plot(output$lambda_inter[,3])
+plot(output$lambda_inter[,4])
+
+#  plot(output$lambda_inter[,2], output$sigma_m[,1] * output$sigma_m[,2])
+# plot(output$lambda_inter[,2]* output$sigma_m[,1] * output$sigma_m[,2]*output$sigma_m[,3])
+# (output$lambda_inter[,2]* output$sigma_m[,1] * output$sigma_m[,2]*output$sigma_m[,3])
+# 
+# mean(output$lambda_inter[,1]* output$sigma_m[,2] * output$sigma_m[,3])
+# lambda_inter[1] * sigma_m[2] * sigma_m[3]
+# mean(output$lambda_inter[,1]* output$sigma_m[,1] * output$sigma_m[,3])
+# lambda_inter[1] * sigma_m[1] * sigma_m[3]
+# mean(output$lambda_inter[,1]* output$sigma_m[,2] * output$sigma_m[,3])
+# lambda_inter[1] * sigma_m[2] * sigma_m[3]
+# 
+# plot(output$sigma_m[,1])
+# plot(output$lambda_m * output$sigma_m[,2])
+# plot(output$lambda_m * output$sigma_m[,3])
+# plot(output$lambda_inter)
+# plot(output$lambda_inter[,1] * output$sigma_m[,1] * output$sigma_m[,2])
+# plot(output$lambda_inter[,1] * output$sigma_m[,1] * output$sigma_m[,3])
+# plot(output$lambda_inter[,1] * output$sigma_m[,2] * output$sigma_m[,3])
+# plot(output$lambda_inter[,2])
+
+
+#if (ci_50(output$lambda_m)[1] <= lambda_m & lambda_m <= ci_50(output$lambda_m)[2]){
+#  cover_lambda50[r,1]<-1
+#}
+if (ci_50(output$lambda_inter[,1])[1] <= lambda_inter[1] & lambda_inter[1] <= ci_50(output$lambda_inter[,1])[2]){
+  cover_lambda50[r,1]<-1
+}
+if (ci_50(output$lambda_inter[,2])[1] <= lambda_inter[2] & lambda_inter[2] <= ci_50(output$lambda_inter[,2])[2]){
+  cover_lambda50[r,2]<-1
+}
+for (j in 1:q){
+  if (ci_50(output$sigma_m[,j])[1] <= sigma_m[j] & sigma_m[j] <= ci_50(output$sigma_m[,j])[2]){
+    cover_sigma50[r,j]<-1
+  }
+}
+if (ci_50(output$sigma_y)[1] <= sigma_y & sigma_y <= ci_50(output$sigma_y)[2]){
+  cover_sigmay50[r]<-1
+}
+
+#if (ci_80(output$lambda_m)[1] <= lambda_m & lambda_m <= ci_80(output$lambda_m)[2]){
+#  cover_lambda80[r,1]<-1
+#}
+if (ci_80(output$lambda_inter[,1])[1] <= lambda_inter[1] & lambda_inter[1] <= ci_80(output$lambda_inter[,1])[2]){
+  cover_lambda80[r,1]<-1
+}
+if (ci_80(output$lambda_inter[,2])[1] <= lambda_inter[2] & lambda_inter[2] <= ci_80(output$lambda_inter[,2])[2]){
+  cover_lambda80[r,2]<-1
+}
+for (j in 1:q){
+  if (ci_80(output$sigma_m[,j])[1] <= sigma_m[j] & sigma_m[j] <= ci_80(output$sigma_m[,j])[2]){
+    cover_sigma80[r,j]<-1
+  }
+}
+if (ci_80(output$sigma_y)[1] <= sigma_y & sigma_y <= ci_80(output$sigma_y)[2]){
+  cover_sigmay80[r]<-1
+}
+
+#if (ci_95(output$lambda_m)[1] <= lambda_m & lambda_m <= ci_95(output$lambda_m)[2]){
+#  cover_lambda95[r,1]<-1
+#}
+if (ci_95(output$lambda_inter[,1])[1] <= lambda_inter[1] & lambda_inter[1] <= ci_95(output$lambda_inter[,1])[2]){
+  cover_lambda95[r,1]<-1
+}
+if (ci_95(output$lambda_inter[,2])[1] <= lambda_inter[2] & lambda_inter[2] <= ci_95(output$lambda_inter[,2])[2]){
+  cover_lambda95[r,2]<-1
+}
+for (j in 1:q){
+  if (ci_95(output$sigma_m[,j])[1] <= sigma_m[j] & sigma_m[j] <= ci_95(output$sigma_m[,j])[2]){
+    cover_sigma95[r,j]<-1
+  }
+}
+if (ci_95(output$sigma_y)[1] <= sigma_y & sigma_y <= ci_95(output$sigma_y)[2]){
+  cover_sigmay95[r]<-1
+}
+
+for (j in 1:J){
+  if (apply(output$mu_cell,2,ci_50)[1,j] <= mu_cell[j] & mu_cell[j] <= apply(output$mu_cell,2,ci_50)[2,j]){
+    cover_mu50[r,j]<-1
+  }
+  if (apply(output$mu_cell,2,ci_80)[1,j] <= mu_cell[j] & mu_cell[j] <= apply(output$mu_cell,2,ci_80)[2,j]){
+    cover_mu80[r,j]<-1
+  }
+  if (apply(output$mu_cell,2,ci_95)[1,j] <= mu_cell[j] & mu_cell[j] <= apply(output$mu_cell,2,ci_95)[2,j]){
+    cover_mu95[r,j]<-1
+  }  
+}
+
+sd_bias[r,]<-c(mean(output$sigma_y)-sigma_y, apply(output$sigma_m,2,mean)-sigma_m,
+               apply(output$lambda_inter,2,mean)-lambda_inter)
+mu_bias[r,]<-apply(output$mu_cell,2,mean)-mu_cell
+}
+
+save.image("output/check_mrp_20150514a.RData")
+# load("check_mrp_20150311a.RData")
+# load("check_mrp_20150311b.RData")
+# load("check_mrp_20150311c.RData")
+load("output/check_mrp_20150514a.RData")
+apply(cover_lambda50,2,mean)
+apply(cover_sigma50,2,mean)
+mean(cover_sigmay50)
+apply(cover_lambda80,2,mean)
+apply(cover_sigma80,2,mean)
+mean(cover_sigmay80)
+apply(cover_lambda95,2,mean)
+apply(cover_sigma95,2,mean)
+mean(cover_sigmay95)
+apply(cover_mu50,2,mean)
+apply(cover_mu80,2,mean)
+apply(cover_mu95,2,mean)
+
+apply(mu_bias,2,mean)
+apply(sd_bias,2,mean)
+############################################################################################################

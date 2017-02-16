@@ -1,0 +1,10 @@
+Universe = vanilla
+Executable = /s/bin/R
+initialdir = /z/Proj/ysi/condor
+log = /z/Proj/ysi/condor/log
+
+arguments	=	--vanilla
+input		= 	mrpweights03032015.R
+output		=	mrpweights03032015
+error           =       err.$(Process)
+Queue

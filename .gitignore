@@ -1,0 +1,6 @@
+.Rdata
+.Rhistory
+literature/
+output/
+plot/
+stan/*.rda
