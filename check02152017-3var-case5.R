@@ -341,8 +341,9 @@ st <- system.time(sflist <- foreach(i.cores = 1:getDoParWorkers()) %dopar% {
 })[3]
 S <- sflist2stanfit(sflist)
 
+   output<-extract(S, permuted=TRUE)
 # ###---look at one sample output---###
-# output<-extract(S, permuted=TRUE)
+
 # print(S,digits=3)
 # summary(output$pri_var)
 # hist(output$pri_var)
