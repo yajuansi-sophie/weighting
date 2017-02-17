@@ -117,51 +117,51 @@ age_race_inc<-model.matrix(~age_dc:race_dc:opmres_x, acs_ad)[,-1]
 ###simulate Y
 
 #case 1)
-betaY_age<-matrix(seq(0.5, 4,length=dim(age)[2]),dim(age)[2],1)
-betaY_race<-matrix(rep(1,dim(race)[2]) + c(2,rep(0,dim(race)[2]-1)),dim(race)[2],1)
-betaY_edu<-matrix(seq(3, 0,length=dim(edu)[2]),dim(edu)[2],1)
-betaY_sex<-matrix(seq(1, 0,length=dim(sex)[2]),dim(sex)[2],1)
-betaY_inc<-matrix(seq(-3, 0,length=dim(inc)[2]),dim(inc)[2],1)
-betaY_cldx<-matrix(0,dim(cldx)[2],1)
-betaY_eldx<-matrix(seq(2, 0,length=dim(eldx)[2]),dim(eldx)[2],1)
-betaY_psx<-matrix(seq(4, 0,length=dim(psx)[2]),dim(psx)[2],1)
-
-betaY_age_race<-matrix(sample(-1:1,dim(age_race)[2],replace=T),dim(age_race)[2],1)
-betaY_age_edu<-matrix(sample(-1:1,dim(age_edu)[2],replace=T),dim(age_edu)[2],1)
-betaY_race_edu<-matrix(sample(-1:1,dim(race_edu)[2],replace=T),dim(race_edu)[2],1)
-
-betaY_race_inc<-matrix(sample(-1:1,dim(race_inc)[2],replace=T),dim(race_inc)[2],1)
-betaY_age_inc<-matrix(sample(-1:1,dim(age_inc)[2],replace=T),dim(age_inc)[2],1)
-betaY_inc_psx<-matrix(sample(-1:1,dim(inc_psx)[2],replace=T),dim(inc_psx)[2],1)
-betaY_inc_eldx<-matrix(sample(-1:1,dim(inc_eldx)[2],replace=T),dim(inc_eldx)[2],1)
-betaY_inc_cldx<-matrix(0,dim(inc_cldx)[2],1)
-
-betaY_age_race_edu<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_edu)[2],replace=T),dim(age_race_edu)[2],1)
-betaY_age_race_inc<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_inc)[2],replace=T),dim(age_race_inc)[2],1)
-
-#case 2)
 # betaY_age<-matrix(seq(0.5, 4,length=dim(age)[2]),dim(age)[2],1)
 # betaY_race<-matrix(rep(1,dim(race)[2]) + c(2,rep(0,dim(race)[2]-1)),dim(race)[2],1)
 # betaY_edu<-matrix(seq(3, 0,length=dim(edu)[2]),dim(edu)[2],1)
 # betaY_sex<-matrix(seq(1, 0,length=dim(sex)[2]),dim(sex)[2],1)
 # betaY_inc<-matrix(seq(-3, 0,length=dim(inc)[2]),dim(inc)[2],1)
-# betaY_cldx<-matrix(seq(0, 2,length=dim(cldx)[2]),dim(cldx)[2],1)
+# betaY_cldx<-matrix(0,dim(cldx)[2],1)
 # betaY_eldx<-matrix(seq(2, 0,length=dim(eldx)[2]),dim(eldx)[2],1)
+# betaY_psx<-matrix(seq(4, 0,length=dim(psx)[2]),dim(psx)[2],1)
 # 
-# betaY_psx<-matrix(0,dim(psx)[2],1)
+# betaY_age_race<-matrix(sample(-1:1,dim(age_race)[2],replace=T),dim(age_race)[2],1)
+# betaY_age_edu<-matrix(sample(-1:1,dim(age_edu)[2],replace=T),dim(age_edu)[2],1)
+# betaY_race_edu<-matrix(sample(-1:1,dim(race_edu)[2],replace=T),dim(race_edu)[2],1)
 # 
-# betaY_age_race<-matrix(0,dim(age_race)[2],1)
-# betaY_age_edu<-matrix(0,dim(age_edu)[2],1)
-# betaY_race_edu<-matrix(0,dim(race_edu)[2],1)
-# 
-# betaY_race_inc<-matrix(0,dim(race_inc)[2],1)
-# betaY_age_inc<-matrix(0,dim(age_inc)[2],1)
-# betaY_inc_psx<-matrix(0,dim(inc_psx)[2],1)
-# betaY_inc_eldx<-matrix(0,dim(inc_eldx)[2],1)
+# betaY_race_inc<-matrix(sample(-1:1,dim(race_inc)[2],replace=T),dim(race_inc)[2],1)
+# betaY_age_inc<-matrix(sample(-1:1,dim(age_inc)[2],replace=T),dim(age_inc)[2],1)
+# betaY_inc_psx<-matrix(sample(-1:1,dim(inc_psx)[2],replace=T),dim(inc_psx)[2],1)
+# betaY_inc_eldx<-matrix(sample(-1:1,dim(inc_eldx)[2],replace=T),dim(inc_eldx)[2],1)
 # betaY_inc_cldx<-matrix(0,dim(inc_cldx)[2],1)
 # 
-# betaY_age_race_edu<-matrix(0,dim(age_race_edu)[2],1)
-# betaY_age_race_inc<-matrix(0,dim(age_race_inc)[2],1)
+# betaY_age_race_edu<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_edu)[2],replace=T),dim(age_race_edu)[2],1)
+# betaY_age_race_inc<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_inc)[2],replace=T),dim(age_race_inc)[2],1)
+# 
+#case 2)
+betaY_age<-matrix(seq(0.5, 4,length=dim(age)[2]),dim(age)[2],1)
+betaY_race<-matrix(rep(1,dim(race)[2]) + c(2,rep(0,dim(race)[2]-1)),dim(race)[2],1)
+betaY_edu<-matrix(seq(3, 0,length=dim(edu)[2]),dim(edu)[2],1)
+betaY_sex<-matrix(seq(1, 0,length=dim(sex)[2]),dim(sex)[2],1)
+betaY_inc<-matrix(seq(-3, 0,length=dim(inc)[2]),dim(inc)[2],1)
+betaY_cldx<-matrix(seq(0, 2,length=dim(cldx)[2]),dim(cldx)[2],1)
+betaY_eldx<-matrix(seq(2, 0,length=dim(eldx)[2]),dim(eldx)[2],1)
+
+betaY_psx<-matrix(0,dim(psx)[2],1)
+
+betaY_age_race<-matrix(0,dim(age_race)[2],1)
+betaY_age_edu<-matrix(0,dim(age_edu)[2],1)
+betaY_race_edu<-matrix(0,dim(race_edu)[2],1)
+
+betaY_race_inc<-matrix(0,dim(race_inc)[2],1)
+betaY_age_inc<-matrix(0,dim(age_inc)[2],1)
+betaY_inc_psx<-matrix(0,dim(inc_psx)[2],1)
+betaY_inc_eldx<-matrix(0,dim(inc_eldx)[2],1)
+betaY_inc_cldx<-matrix(0,dim(inc_cldx)[2],1)
+
+betaY_age_race_edu<-matrix(0,dim(age_race_edu)[2],1)
+betaY_age_race_inc<-matrix(0,dim(age_race_inc)[2],1)
 
 
 muY <- age%*%betaY_age + race %*% betaY_race + edu%*%betaY_edu + 
@@ -200,12 +200,12 @@ betaI_inc_cldx<-matrix(sample(-1:1,dim(inc_cldx)[2],replace=T),dim(inc_cldx)[2],
 betaI_age_race_edu<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_edu)[2],replace=T),dim(age_race_edu)[2],1)
 betaI_age_race_inc<-matrix(sample(seq(-1,1,by=0.2),dim(age_race_inc)[2],replace=T),dim(age_race_inc)[2],1)
 
-sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_edu + 
-                         sex%*%betaI_sex + inc %*% betaI_inc + psx%*%betaI_psx + 
-                         eldx%*%betaI_eldx + cldx %*% betaI_cldx + 
-                         age_race%*%betaI_age_race + age_edu%*%betaI_age_edu + race_edu%*%betaI_race_edu + 
-                         race_inc%*%betaI_race_inc + age_inc%*%betaI_age_inc + inc_psx%*%betaI_inc_psx + 
-                         inc_eldx%*%betaI_inc_eldx + inc_cldx%*%betaI_inc_cldx +  
+sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_edu +
+                         sex%*%betaI_sex + inc %*% betaI_inc + psx%*%betaI_psx +
+                         eldx%*%betaI_eldx + cldx %*% betaI_cldx +
+                         age_race%*%betaI_age_race + age_edu%*%betaI_age_edu + race_edu%*%betaI_race_edu +
+                         race_inc%*%betaI_race_inc + age_inc%*%betaI_age_inc + inc_psx%*%betaI_inc_psx +
+                         inc_eldx%*%betaI_inc_eldx + inc_cldx%*%betaI_inc_cldx +
                          age_race_edu%*%betaI_age_race_edu +
                          age_race_inc%*%betaI_age_race_inc)))
 
@@ -231,9 +231,7 @@ sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_ed
 # 
 # betaI_age_race_edu<-matrix(0,dim(age_race_edu)[2],1)
 # betaI_age_race_inc<-matrix(0,dim(age_race_inc)[2],1)
-# 
-# 
-# 
+
 # sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_edu +
 #                          sex%*%betaI_sex + inc %*% betaI_inc + psx%*%betaI_psx +
 #                          eldx%*%betaI_eldx + cldx %*% betaI_cldx +
@@ -243,7 +241,7 @@ sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_ed
 #                          age_race_edu%*%betaI_age_race_edu +
 #                          age_race_inc%*%betaI_age_race_inc)))
 
-hist(sel_prob)
+#hist(sel_prob)
 sum((runif(N)<=sel_prob))
 
 pop_cell_id<-rep(0,N)
@@ -375,6 +373,8 @@ summary(output$lambda_inter[,1]*output$lambda_m[,1]*output$lambda_m[,3]*output$s
 summary(output$lambda_inter[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
 
 summary(output$lambda_inter[,2]*output$lambda_m[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
+
+
 
 dim(output$ps_w)
 apply(output$ps_w,2,mean)
@@ -541,6 +541,6 @@ id.dat.design<-svydesign(id=~1,data=dat,weights=w_unit_iid)
 
 svymean(~Y,id.dat.design)
 
-save.image("output/simulation_8var_20170216_case1_Ynocld_Iall.RData")
+save.image("output/simulation_8var_20170216_case3_Ymain_Iall.RData")
 
 ############################################################################################################
