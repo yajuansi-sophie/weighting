@@ -178,9 +178,9 @@ Y<-rnorm(N) * 5 + muY
 ###simuate I
 
 #case 1)
-betaI_age<-matrix(seq(0, 1,length=dim(age)[2]),dim(age)[2],1)
+betaI_age<-matrix(seq(-1, 1,length=dim(age)[2]),dim(age)[2],1)
 betaI_race<-matrix(seq(-1, 1,length=dim(race)[2]),dim(race)[2],1)
-betaI_edu<-matrix(seq(0, 1,length=dim(edu)[2]),dim(edu)[2],1)
+betaI_edu<-matrix(seq(-1, 1,length=dim(edu)[2]),dim(edu)[2],1)
 betaI_sex<-matrix(seq(-1, 0,length=dim(sex)[2]),dim(sex)[2],1)
 betaI_inc<-matrix(seq(0, 1,length=dim(inc)[2]),dim(inc)[2],1)
 betaI_cldx<-matrix(seq(0, 1,length=dim(cldx)[2]),dim(cldx)[2],1)
@@ -243,8 +243,9 @@ sel_prob <- 1/(1+exp(-(-2+age%*%betaI_age + race %*% betaI_race + edu%*%betaI_ed
 #                          age_race_edu%*%betaI_age_race_edu +
 #                          age_race_inc%*%betaI_age_race_inc)))
 
-#hist(sel_prob)
-#sum((runif(N)<=sel_prob))
+hist(sel_prob)
+sum((runif(N)<=sel_prob))
+
 pop_cell_id<-rep(0,N)
 J_sup<-J_age*J_eth*J_edu*J_sex*J_inc*J_eld*J_cld*J_ps
 cell_str<-matrix(0,J_sup,q)
@@ -324,7 +325,7 @@ stan.data_cell <- list(n=nrow(dat),q=q,
                        J_age_eth_edu=J_age * J_eth * J_edu, J_age_eth_inc=J_age*J_eth*J_inc
 )
 
-S.compile_cell_sp <- stan(file='stan/mrpweights05262016-8var.stan',
+S.compile_cell_sp <- stan(file='stan/mrpweights-8var.stan',
                           data=stan.data_cell,
                           iter=2, chains=1)
 
@@ -339,92 +340,86 @@ st <- system.time(sflist <- foreach(i.cores = 1:getDoParWorkers()) %dopar% {
 })[3]
 S <- sflist2stanfit(sflist)
 
-# #print(S,digits=3)
-# output<-extract(S, permuted=TRUE)
-# summary(output$pri_var)
-# hist(output$pri_var)
-# plot(output$pri_var)
-# 
-# hist(output$sigma_m)
-# summary(output$sigma_m)
-# plot(output$sigma_m)
-# 
-# hist(output$lambda_inter[,1])
-# hist(output$lambda_inter[,2])
-# plot(output$lambda_inter[,1])
-# plot(output$lambda_inter[,2])
-# summary(output$lambda_inter)
-# 
-# summary(output$lambda_m)
-# plot(output$lambda_m[,1])
-# plot(output$lambda_m[,2])
-# plot(output$lambda_m[,3])
-# 
-# summary(output$sigma_y)
-# plot(output$sigma_y)
-# 
-# summary(output$lambda_m[,1]*output$sigma_m)
-# summary(output$lambda_m[,2]*output$sigma_m)
-# summary(output$lambda_m[,3]*output$sigma_m)
-# 
-# summary(output$lambda_inter[,1]*output$lambda_m[,1]*output$lambda_m[,2]*output$sigma_m)
-# summary(output$lambda_inter[,1]*output$lambda_m[,1]*output$lambda_m[,3]*output$sigma_m)
-# summary(output$lambda_inter[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
-# 
-# summary(output$lambda_inter[,2]*output$lambda_m[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
-# 
-# 
-# 
-# dim(output$ps_w)
-# apply(output$ps_w,2,mean)
-# apply(output$w_new,2,mean)
-# 
-# length(unique(apply(output$w_new,2,mean)))
-# plot(apply(output$y_cell_new,2,mean)-y_cell) #compare with observed data
-# 
-# plot(apply(output$mu_cell_pred,2,mean)-mu_cell_true)
-# plot(n_cell,apply(output$mu_cell,2,mean)-mu_cell_use)
-# 
-# #age eth edu sex inc eldx cldx psx
-# age1 <- as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,1]==1]
-# sum(mu_cell_true[age1] * N_cell_true[age1])/sum(N_cell_true[age1])
-# 
-# sum(apply(output$mu_cell_pred,2,mean)[age1] * N_cell_true[age1])/sum(N_cell_true[age1])
-# 
-# sex1 <- as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,5]==1]
-# sum(mu_cell_true[sex1] * N_cell_true[sex1])/sum(N_cell_true[sex1])
-# 
-# sum(apply(output$mu_cell_pred,2,mean)[sex1] * N_cell_true[sex1])/sum(N_cell_true[sex1])
-# 
-# #poor<-as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,4]==1]
-# 
-# summary(output$theta_pred)
-# quantile(output$theta_pred,c(0.025,0.975))
-# mean(Y)
-# 
-# w1<-apply(output$w_new,2,mean)
-# w_unit<-rep(0,n)
-# for (i in 1:n){
-#   w_unit[i]<-apply(output$w_new,2,mean)[J_use==cell_id[i]]
-# }
-# w_unit<-w_unit/mean(w_unit)
-# summary(w_unit)
-# sd(w_unit)
-# 
-# sum(w_unit*dat$Y)/sum(w_unit)
-# 
-# st.dat.design<-svydesign(id=~1,data=dat,weights=w_unit)
-# 
-# svymean(~Y,st.dat.design)
+output<-extract(S, permuted=TRUE)
 
-# apply(output$w_new,2,mean)
-# w_unit<-rep(0,n)
-# for (i in 1:n){
-#   w_unit[i]<-apply(output$w_new,2,mean)[J_use==cell_id[i]]
-# }
-# w_unit<-w_unit/mean(w_unit)
-# summary(w_unit)
-# sd(w_unit)
+#print(S,digits=3)
+# 
+summary(output$pri_var)
+hist(output$pri_var)
+plot(output$pri_var)
+
+hist(output$sigma_m)
+summary(output$sigma_m)
+plot(output$sigma_m)
+
+hist(output$lambda_inter[,1])
+hist(output$lambda_inter[,2])
+plot(output$lambda_inter[,1])
+plot(output$lambda_inter[,2])
+summary(output$lambda_inter)
+
+summary(output$lambda_m)
+plot(output$lambda_m[,1])
+plot(output$lambda_m[,2])
+plot(output$lambda_m[,3])
+
+summary(output$sigma_y)
+plot(output$sigma_y)
+
+summary(output$lambda_m[,1]*output$sigma_m)
+summary(output$lambda_m[,2]*output$sigma_m)
+summary(output$lambda_m[,3]*output$sigma_m)
+
+summary(output$lambda_inter[,1]*output$lambda_m[,1]*output$lambda_m[,2]*output$sigma_m)
+summary(output$lambda_inter[,1]*output$lambda_m[,1]*output$lambda_m[,3]*output$sigma_m)
+summary(output$lambda_inter[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
+
+summary(output$lambda_inter[,2]*output$lambda_m[,1]*output$lambda_m[,2]*output$lambda_m[,3]*output$sigma_m)
+
+
+
+dim(output$ps_w)
+apply(output$ps_w,2,mean)
+apply(output$w_new,2,mean)
+
+length(unique(apply(output$w_new,2,mean)))
+plot(apply(output$y_cell_new,2,mean)-y_cell) #compare with observed data
+
+plot(apply(output$mu_cell_pred,2,mean)-mu_cell_true)
+plot(n_cell,apply(output$mu_cell,2,mean)-mu_cell_use)
+
+#age eth edu sex inc eldx cldx psx
+age1 <- as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,1]==1]
+sum(mu_cell_true[age1] * N_cell_true[age1])/sum(N_cell_true[age1])
+
+sum(apply(output$mu_cell_pred,2,mean)[age1] * N_cell_true[age1])/sum(N_cell_true[age1])
+
+sex1 <- as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,5]==1]
+sum(mu_cell_true[sex1] * N_cell_true[sex1])/sum(N_cell_true[sex1])
+
+sum(apply(output$mu_cell_pred,2,mean)[sex1] * N_cell_true[sex1])/sum(N_cell_true[sex1])
+
+#poor<-as.numeric(names(table(pop_cell_id))) %in% (1:J_sup)[cell_str[,4]==1]
+
+summary(output$theta_pred)
+quantile(output$theta_pred,c(0.025,0.975))
+mean(Y)
+
+w1<-apply(output$w_new,2,mean)
+w_unit<-rep(0,n)
+for (i in 1:n){
+  w_unit[i]<-apply(output$w_new,2,mean)[J_use==cell_id[i]]
+}
+w_unit<-w_unit/mean(w_unit)
+summary(w_unit)
+sd(w_unit)
+
+sum(w_unit*dat$Y)/sum(w_unit)
+
+st.dat.design<-svydesign(id=~1,data=dat,weights=w_unit)
+
+svymean(~Y,st.dat.design)
+
 
 ###------PS weighting------###
 # plot(N_cell/n_cell/sum(N_cell)*n)
@@ -437,7 +432,8 @@ for (i in 1:n){
   w_ps[i]<-(N_cell /n_cell)[J_use==cell_id[i]]
 }
 w_ps<-w_ps/mean(w_ps)
-
+summary(w_ps)
+sd(w_ps)
 ps.dat.design<-svydesign(id=~1,data=dat,weights=w_ps)
 
 svymean(~Y,ps.dat.design)
@@ -445,8 +441,8 @@ svymean(~Y,ps.dat.design)
 ###------inverse-prob weighted estimator------###
 #sum(dat$Y/sel_prob[I])/sum(1/sel_prob[I])
 w_ips<-1/sel_prob[I]/mean(1/sel_prob[I])
-#summary(w_ips)
-#sd(w_ips)
+summary(w_ips)
+sd(w_ips)
 ips.dat.design<-svydesign(id=~1,data=dat,weights=w_ips)
 
 svymean(~Y,ips.dat.design)
@@ -472,21 +468,26 @@ names(pop.ps)<-c("psx","Freq")
 
 dat_rake<-rake(dat.design,list(~age,~eth,~edu,~sex,~inc,~cldx,~eldx,~psx),
                list(pop.age,pop.eth,pop.edu,pop.sex,pop.inc,pop.cld,pop.eld,pop.ps))
+#Warning message:
+#  In rake(dat.design, list(~age, ~eth, ~edu, ~sex, ~inc, ~cldx, ~eldx,  :
+#                             Raking did not converge after 10 iterations.
+
 #weights(dat_rake)
 
-#plot(weights(dat_rake))
-#summary(weights(dat_rake))
+plot(weights(dat_rake))
+hist(weights(dat_rake))
+summary(weights(dat_rake))
 #length(unique(weights(dat_rake)))
 w_rake<-weights(dat_rake)/mean(weights(dat_rake))
 rake.dat.design<-svydesign(id=~1,data=dat,weights=w_rake)
 
 svymean(~Y,rake.dat.design)
 
-#summary(w_rake) 
-#sd(w_rake)
+summary(w_rake) 
+sd(w_rake)
 
 ###-----------------STAN with independent prior--------------------------###
-S.compile_cell_1 <- stan(file='stan/mrpweights05262016-8var-iid.stan',
+S.compile_cell_1 <- stan(file='stan/mrpweights-8var-iid.stan',
                          data=stan.data_cell,
                          iter=2, chains=1)
 
@@ -503,28 +504,28 @@ S1 <- sflist2stanfit(sflist1)
 #print(S1,digits=3)
 output_iid<-extract(S1, permuted=TRUE)
 
-# summary(output_iid$pri_var)
-# hist(output_iid$pri_var)
-# plot(output_iid$pri_var)
-# 
-# hist(output_iid$sigma_m[,1])
-# summary(output_iid$sigma_m)
-# plot(output_iid$sigma_m[,1])
-# 
-# 
-# summary(output_iid$sigma_y)
-# plot(output_iid$sigma_y)
-# 
-# 
-# dim(output_iid$ps_w)
-# apply(output_iid$ps_w,2,mean)
-# 
-# 
-# plot(apply(output_iid$y_cell_new,2,mean))
-# 
-# 
-# plot(apply(output_iid$mu_cell_pred,2,mean)-mu_cell_true)
-# plot(n_cell,apply(output_iid$mu_cell,2,mean)-mu_cell_use)
+summary(output_iid$pri_var)
+hist(output_iid$pri_var)
+plot(output_iid$pri_var)
+
+hist(output_iid$sigma_m[,1])
+summary(output_iid$sigma_m)
+plot(output_iid$sigma_m[,1])
+
+
+summary(output_iid$sigma_y)
+plot(output_iid$sigma_y)
+
+
+dim(output_iid$ps_w)
+apply(output_iid$ps_w,2,mean)
+
+
+plot(apply(output_iid$y_cell_new,2,mean))
+
+
+plot(apply(output_iid$mu_cell_pred,2,mean)-mu_cell_true)
+plot(n_cell,apply(output_iid$mu_cell,2,mean)-mu_cell_use)
 
 
 # apply(output_iid$w_new,2,mean)
@@ -536,6 +537,11 @@ w_unit_iid<-w_unit_iid/mean(w_unit_iid)
 # summary(w_unit_iid)
 # sd(w_unit_iid)
 
+sum(w_unit_iid*dat$Y)/sum(w_unit_iid)
+
+id.dat.design<-svydesign(id=~1,data=dat,weights=w_unit_iid)
+
+svymean(~Y,id.dat.design)
 
 save.image("output/simulation_8var_20160530_case1_all.RData")
 
