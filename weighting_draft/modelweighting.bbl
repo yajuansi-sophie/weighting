@@ -1,0 +1,334 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{{ACS Weighting Method}}{{ACS Weighting
+  Method}}{2014}]{acsweighting2014}
+{ACS Weighting Method} (2014).
+\newblock {\em American Community Survey Design and Methodology, Chapter 11:
+  Weighting and Estimation}.
+\newblock United States Census Bureau.
+
+\bibitem[\protect\citeauthoryear{Beaumont}{Beaumont}{2008}]{beaumont08}
+Beaumont, J.~P. (2008).
+\newblock A new approach to weighting and inference in sample surveys.
+\newblock {\em Biometrika\/}~{\em 95\/}(3), 539--553.
+
+\bibitem[\protect\citeauthoryear{Breidt}{Breidt}{2008}]{Breidt08}
+Breidt, F.~J. (2008).
+\newblock Endogenous post-stratification in surveys: {C}lassifying with a
+  sample-fitted model.
+\newblock {\em Annals of Statistics\/}~{\em 36}, 403--427.
+
+\bibitem[\protect\citeauthoryear{Breidt, Claeskens, and Opsomer}{Breidt
+  et~al.}{2005}]{breidt05}
+Breidt, F.~J., G.~Claeskens, and J.~D. Opsomer (2005).
+\newblock Model-assisted estimation for complex surveys using penalized
+  splines.
+\newblock {\em Biometrika\/}~{\em 92}, 831--846.
+
+\bibitem[\protect\citeauthoryear{Carvalho, Polson, and Scott}{Carvalho
+  et~al.}{2010}]{horseshoe10}
+Carvalho, C.~M., N.~G. Polson, and J.~G. Scott (2010).
+\newblock The horseshoe estimator for sparse signals.
+\newblock {\em Biometrika\/}~{\em 97}, 465--480.
+
+\bibitem[\protect\citeauthoryear{Chambers, Dorfman, and Wehrly}{Chambers
+  et~al.}{1993}]{robustblup:Chambers:JASA93}
+Chambers, R.~L., A.~H. Dorfman, and T.~E. Wehrly (1993).
+\newblock Bias robust estimation in finite populations using nonparametric
+  calibration.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 88},
+  260--269.
+
+\bibitem[\protect\citeauthoryear{Chen, Elliott, Haziza, Yang, Ghosh, Little,
+  Sefransk, and Thompson}{Chen et~al.}{2017}]{samsi:review17}
+Chen, Q., M.~R. Elliott, D.~Haziza, Y.~Yang, M.~Ghosh, R.~Little, J.~Sefransk,
+  and M.~Thompson (2017).
+\newblock Weights and estimation of a survey population mean: {A} review.
+\newblock {\em Statistical Science\/}~{\em 32}.
+
+\bibitem[\protect\citeauthoryear{Dahlke, Breidt, Opsomer, and Keilegom}{Dahlke
+  et~al.}{2013}]{Dahlke13}
+Dahlke, M., F.~Breidt, J.~Opsomer, and I.~V. Keilegom (2013).
+\newblock Nonparametric endogenous post-stratification in surveys.
+\newblock {\em Statistica Sinica\/}~{\em 23}, 189--211.
+
+\bibitem[\protect\citeauthoryear{Deville and S{\"a}rndal}{Deville and
+  S{\"a}rndal}{1992}]{greg92}
+Deville, J.~C. and C.~E. S{\"a}rndal (1992).
+\newblock Calibration estimators in survey sampling.
+\newblock {\em Journal of the American Statistical Association\/}~{\em
+  87\/}(418), 376--382.
+
+\bibitem[\protect\citeauthoryear{Deville, Sarndal, and Sautory}{Deville
+  et~al.}{1993}]{gr-rake93}
+Deville, J.~C., C.~E. Sarndal, and O.~Sautory (1993).
+\newblock Generalized raking procedures in survey sampling.
+\newblock {\em Journal of the American Statistical Association\/}~{\em
+  88\/}(423), 1013--1020.
+
+\bibitem[\protect\citeauthoryear{Elliott}{Elliott}{2007}]{elliott07}
+Elliott, M.~R. (2007).
+\newblock Bayesian weight trimming for generalized linear regression models.
+\newblock {\em Journal of Official Statistics\/}~{\em 33\/}(1), 23--34.
+
+\bibitem[\protect\citeauthoryear{Elliott and Little}{Elliott and
+  Little}{2000}]{modeltrim-elliottandlittle00}
+Elliott, M.~R. and R.~J. Little (2000).
+\newblock Model-based alternatives to trimming survey weights.
+\newblock {\em Journal of Official Statistics\/}~{\em 16\/}(3), 191--209.
+
+\bibitem[\protect\citeauthoryear{Firth and Bennett}{Firth and
+  Bennett}{1998}]{robust:Firth:JRSSB98}
+Firth, D. and K.~E. Bennett (1998).
+\newblock Robust models in probability sampling.
+\newblock {\em Journal of the Royal Statistical Society Series B\/}~{\em 60},
+  3--21.
+
+\bibitem[\protect\citeauthoryear{Fuller}{Fuller}{2009}]{fuller09}
+Fuller, W. (2009).
+\newblock {\em Sampling Statistics}.
+\newblock Wiley.
+
+\bibitem[\protect\citeauthoryear{Gelman}{Gelman}{2005}]{anova:gelman:05}
+Gelman, A. (2005).
+\newblock Analysis of variance: why it is more important than ever (with
+  discusion).
+\newblock {\em Annals of Statistics\/}~{\em 33\/}(1), 1--53.
+
+\bibitem[\protect\citeauthoryear{Gelman}{Gelman}{2006}]{gelman06-prior}
+Gelman, A. (2006).
+\newblock Prior distributions for variance parameters in hierarchical models.
+\newblock {\em Bayesian Analysis\/}~{\em 3}, 515--533.
+
+\bibitem[\protect\citeauthoryear{Gelman}{Gelman}{2007}]{gelman07}
+Gelman, A. (2007).
+\newblock Struggles with survey weighting and regression modeling.
+\newblock {\em Statistical Science\/}~{\em 22\/}(2), 153--164.
+
+\bibitem[\protect\citeauthoryear{Gelman and Carlin}{Gelman and
+  Carlin}{2001}]{gelmancarlin01}
+Gelman, A. and J.~B. Carlin (2001).
+\newblock Poststratification and weighting adjustments.
+\newblock In R.~Groves, D.~Dillman, J.~Eltinge, and R.~Little (Eds.), {\em
+  Survey Nonresponse}.
+
+\bibitem[\protect\citeauthoryear{Gelman and Little}{Gelman and
+  Little}{1997a}]{gelman:little:97}
+Gelman, A. and T.~C. Little (1997a).
+\newblock Poststratifcation into many cateogiries using hierarchical logistic
+  regression.
+\newblock {\em Survey Methodology\/}~{\em 23}, 127--135.
+
+\bibitem[\protect\citeauthoryear{Gelman and Little}{Gelman and
+  Little}{1997b}]{gelman:little-97}
+Gelman, A. and T.~C. Little (1997b).
+\newblock Poststratification into many categories using hierarchical logistic
+  regression.
+\newblock {\em Survey Methodology\/}~{\em 23}, 127--135.
+
+\bibitem[\protect\citeauthoryear{Gelman and Little}{Gelman and
+  Little}{1998}]{gelman:little:98}
+Gelman, A. and T.~C. Little (1998).
+\newblock Improving on probability weighting for household size.
+\newblock {\em Public Opinion Quarterly\/}~{\em 62\/}(398--404).
+
+\bibitem[\protect\citeauthoryear{Ghitza and Gelman}{Ghitza and
+  Gelman}{2013}]{Ghitza:gelman-13}
+Ghitza, Y. and A.~Gelman (2013).
+\newblock Deep interactions with {MRP}: {E}lection turnout and voting patterns
+  among small electoral subgroups.
+\newblock {\em American Journal of Political Sicience\/}~{\em 57\/}(3),
+  762--776.
+
+\bibitem[\protect\citeauthoryear{Ghosh and Meeden}{Ghosh and
+  Meeden}{1997}]{ghosh:meeden:97}
+Ghosh, M. and G.~Meeden (1997).
+\newblock {\em Bayesian Methods for Finite Population Sampling}.
+\newblock CRC Press.
+
+\bibitem[\protect\citeauthoryear{Groves and Couper}{Groves and
+  Couper}{1995}]{groves:couper:98JOS}
+Groves, R. and M.~Couper (1995).
+\newblock Theoretical motivation for post-survey nonresponse adjustment in
+  household surveys.
+\newblock {\em Journal of Official Statistics\/}~{\em 11}, 93--106.
+
+\bibitem[\protect\citeauthoryear{Henry and Valliant}{Henry and
+  Valliant}{2012}]{henry:valliant12}
+Henry, K. and R.~Valliant (2012).
+\newblock Comparing alternative weight adjustment methods.
+\newblock In {\em Proceedings of the Section on Survey Research Methods}.
+  American Statistical Association.
+
+\bibitem[\protect\citeauthoryear{Hoffman and Gelman}{Hoffman and
+  Gelman}{2014}]{hoffman-gelman:2012}
+Hoffman, M.~D. and A.~Gelman (2014).
+\newblock The {N}o-{U}-{T}urn sampler: {A}daptively setting path lengths in
+  {H}amiltonian {M}onte {C}arlo.
+\newblock {\em Journal of Machine Learning Research\/}~{\em 15}, 1351--1381.
+
+\bibitem[\protect\citeauthoryear{Holt and Smith}{Holt and Smith}{1979}]{hs79}
+Holt, D. and T.~M.~F. Smith (1979).
+\newblock Post stratification.
+\newblock {\em Journal of the Royal Statistical Society Series A\/}~{\em
+  142\/}(1), 33--46.
+
+\bibitem[\protect\citeauthoryear{Kang and Schafter}{Kang and
+  Schafter}{2007}]{kang:schafter07}
+Kang, J. D.~Y. and J.~L. Schafter (2007).
+\newblock Demystifying double robustness: {A} comparison of alternative
+  strategies for estimating a population mean from incomplete data.
+\newblock {\em Statistical Science\/}~{\em 22\/}(4), 523--539.
+
+\bibitem[\protect\citeauthoryear{Kim and Skinner}{Kim and
+  Skinner}{2013}]{Kim:Skinner:BM13}
+Kim, J.~K. and C.~J. Skinner (2013).
+\newblock Weighting in survey analysis under informative sampling.
+\newblock {\em Biometrika\/}~{\em 100\/}(2), 385--398.
+
+\bibitem[\protect\citeauthoryear{Kott}{Kott}{2009}]{calibration:kott09}
+Kott, P. (2009).
+\newblock Calibration weighting: combining probability samples and linear
+  prediction models.
+\newblock In D.~Pfeffermann and C.~R. Rao (Eds.), {\em Handbook of Statistics,
+  Sample Surveys: Design, Methods and Application}, Volume 29B. Elsevier.
+
+\bibitem[\protect\citeauthoryear{Little}{Little}{1983}]{little83-pi}
+Little, R. (1983).
+\newblock Comment on ``{A}n evaluation of model-dependent and
+  probability-sampling inferences in sample surveys", by {M. H. H}ansen, {W. G.
+  M}adow and {B. J. T}epping.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 78},
+  797--799.
+
+\bibitem[\protect\citeauthoryear{Little}{Little}{1991}]{little91}
+Little, R. (1991).
+\newblock Inference with survey weights.
+\newblock {\em Journal of Official Statistics\/}~{\em 7}, 405--424.
+
+\bibitem[\protect\citeauthoryear{Little}{Little}{1993}]{little93}
+Little, R. (1993).
+\newblock Post-stratification: A modeler's perspective.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 88},
+  1001--1012.
+
+\bibitem[\protect\citeauthoryear{Little}{Little}{2004}]{little04-model}
+Little, R. (2004).
+\newblock To model or not to model? {C}ompeting modes of inference for finite
+  population sampling inference for finite population sampling.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 99},
+  546--556.
+
+\bibitem[\protect\citeauthoryear{Little and Wu}{Little and
+  Wu}{1991}]{rake:little91}
+Little, R. and M.~Wu (1991).
+\newblock Models for contingency tables with known margins when target and
+  sampled populations differ.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 86},
+  87--95.
+
+\bibitem[\protect\citeauthoryear{Park, Gelman, and Bafumi}{Park
+  et~al.}{2005}]{park:gelman:bafumi-04}
+Park, D.~K., A.~Gelman, and J.~Bafumi (2005).
+\newblock State-level opinions from national surveys: {P}oststratification
+  using multilevel logistic regression.
+\newblock In J.~E. Cohen (Ed.), {\em Public Opinion in State Politics}.
+  Stanford University Press.
+
+\bibitem[\protect\citeauthoryear{Pfeffermann}{Pfeffermann}{1993}]{pfeffermann93}
+Pfeffermann, D. (1993).
+\newblock The role of sampling weights when modeling survey data.
+\newblock {\em International Statistical Review\/}~{\em 61\/}(2), 317--337.
+
+\bibitem[\protect\citeauthoryear{Piironen and Vehtari}{Piironen and
+  Vehtari}{2016}]{hyperprior:Aki16}
+Piironen, J. and A.~Vehtari (2016).
+\newblock On the hyperprior choice for the global shrinkage parameter in the
+  horseshoe prior.
+\newblock https://arxiv.org/abs/1610.05559.
+
+\bibitem[\protect\citeauthoryear{Potter}{Potter}{1988}]{potter88}
+Potter, F.~A. (1988).
+\newblock Survey of procedures to control extreme sample weights.
+\newblock In {\em Proceedings of the Section on Survey Research Methods}, pp.\
+  453--458. American Statistical Association.
+
+\bibitem[\protect\citeauthoryear{Potter}{Potter}{1990}]{trim-potter90}
+Potter, F.~A. (1990).
+\newblock A study of procedures to identify and trim extreme sampling weights.
+\newblock In {\em Proceedings of the Survey Research Methods Section}, pp.\
+  225--230. American Statistical Association.
+
+\bibitem[\protect\citeauthoryear{Rubin}{Rubin}{1976}]{rubin76}
+Rubin, D.~B. (1976).
+\newblock Inference and missing data (with discussion).
+\newblock {\em Biometrika\/}~{\em 63}, 581--592.
+
+\bibitem[\protect\citeauthoryear{Rubin}{Rubin}{1983}]{rubin83-pi}
+Rubin, D.~B. (1983).
+\newblock Comment on ``{A}n evaluation of model-dependent and
+  probability-sampling inferences in sample surveys," by {M. H. H}ansen, {W. G.
+  M}adow and {B. J. T}epping.
+\newblock {\em Journal of the American Statistical Association\/}~{\em 78},
+  803--805.
+
+\bibitem[\protect\citeauthoryear{Si and Gelman}{Si and
+  Gelman}{2014}]{RHweighting}
+Si, Y. and A.~Gelman (2014).
+\newblock Survey weighting for {New York} longitudinal survey on poverty
+  measure.
+\newblock Technical report, Columbia University.
+
+\bibitem[\protect\citeauthoryear{Si, Pillai, and Gelman}{Si
+  et~al.}{2015}]{bnfp:ba15}
+Si, Y., N.~S. Pillai, and A.~Gelman (2015).
+\newblock Nonparametric {B}ayesian weighted sampling inference.
+\newblock {\em Bayesian Analysis\/}~{\em 10\/}(3), 605--625.
+
+\bibitem[\protect\citeauthoryear{{Stan Development Team}}{{Stan Development
+  Team}}{2017a}]{stan-software:2013}
+{Stan Development Team} (2017a).
+\newblock Stan: {A} {C}++ library for probability and sampling.
+\newblock http://mc-stan.org.
+
+\bibitem[\protect\citeauthoryear{{Stan Development Team}}{{Stan Development
+  Team}}{2017b}]{stan-manual:2013}
+{Stan Development Team} (2017b).
+\newblock Stan modeling language user's guide and reference manual.
+\newblock http://mc-stan.org.
+
+\bibitem[\protect\citeauthoryear{Valliant, Dorfman, and Royall}{Valliant
+  et~al.}{2000}]{FPSi:Valliant00}
+Valliant, R., A.~Dorfman, and R.~Royall (2000).
+\newblock {\em Finite Population Sampling and Inference}.
+\newblock Wiley.
+
+\bibitem[\protect\citeauthoryear{Volfovsky and Hoff}{Volfovsky and
+  Hoff}{2014}]{volfovsky:hoff14}
+Volfovsky, A. and P.~Hoff (2014).
+\newblock Hierarchical array priors for {ANOVA} decompositions of
+  cross-classified data.
+\newblock {\em Annals of Applied Statistics\/}~{\em 8\/}(1), 19--47.
+
+\bibitem[\protect\citeauthoryear{Wimer, Garfinkel, Gelblum, Lasala, Phillips,
+  Si, Teitler, and Waldfogel}{Wimer et~al.}{2014}]{RHreport}
+Wimer, C., I.~Garfinkel, M.~Gelblum, N.~Lasala, S.~Phillips, Y.~Si, J.~Teitler,
+  and J.~Waldfogel (2014).
+\newblock Poverty tracker---monitoring poverty and well-being in {NYC}.
+\newblock Columbia Population Research Center and Robin Hood Foundation.
+
+\bibitem[\protect\citeauthoryear{Xia and Elliott}{Xia and
+  Elliott}{2016}]{elliot:JOS16}
+Xia, X. and M.~R. Elliott (2016).
+\newblock Weight smoothing for generalized linear models using a {L}aplace
+  prior.
+\newblock {\em Journal of Official Statistics\/}~{\em 32\/}(2), 507--539.
+
+\bibitem[\protect\citeauthoryear{Yuan and Lin}{Yuan and
+  Lin}{2006}]{grouplasso06}
+Yuan, M. and Y.~Lin (2006).
+\newblock Model selection and estimation in regression with grouped variables.
+\newblock {\em Journal of the Royal Statistical Society Series B\/}~{\em
+  68\/}(1), 49--67.
+
+\end{thebibliography}
