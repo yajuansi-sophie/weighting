@@ -255,7 +255,8 @@ for (r in 1:R) {
     mutate(
       id_cell = paste0(age,eth,edu)
     )
-  dat %>% group_by(age, eth, edu) %>% summarise(Y = mean(Y), n = n()) -> dat_rstanarm
+  dat %>% group_by(age, eth, edu) %>% summarise(sd_cell = sd(Y), Y = mean(Y), n = n(),
+                                                sd_cell = if_else(is.na(sd_cell),0,sd_cell)) -> dat_rstanarm
   dat_rstanarm %>% ungroup() %>% 
     mutate(
       id_cell = paste0(age,eth,edu),
@@ -292,10 +293,9 @@ for (r in 1:R) {
   
   ###-----------------STAN with structural prior--------------------------###
   
-  stan.seed <- round(runif(1, 0, 9999999))
   S_arm <- rstanarm::stan_glmer(formula = ff, data = dat_rstanarm, iter = 2000, chains = 4, cores = 4, 
-                            prior_covariance = rstanarm::mrp_structured(scale_weights = 1/sqrt(dat_rstanarm$n)), 
-                            seed = 123, prior_aux = normal(1,0.5))
+                            prior_covariance = rstanarm::mrp_structured(cell_size = dat_rstanarm$n, cell_sd = dat_rstanarm$sd_cell), 
+                            seed = 123, prior_aux = cauchy(0,5), prior_intercept = normal(0, 100, autoscale = FALSE))
   output <- sum_svey_model(S_arm, agg_pop)
   dat %>%
     left_join(
@@ -345,8 +345,9 @@ for (r in 1:R) {
   
   
   S1 <- rstanarm::stan_glmer(formula = ff, data = dat_rstanarm, iter = 2000, chains = 4, cores = 4,
-                             prior_covariance = rstanarm::mrp_structured(indep=TRUE, scale_weights = 1/sqrt(dat_rstanarm$n)), 
-                             prior_aux = normal(1,0.5))
+                             prior_covariance = rstanarm::mrp_structured(indep = TRUE, cell_size = dat_rstanarm$n, 
+                                                                         cell_sd = dat_rstanarm$sd_cell), 
+                             prior_aux = cauchy(0,5))
   output_iid <- sum_svey_model(object = S1, agg_pop = agg_pop)
   dat %>%
     left_join(
