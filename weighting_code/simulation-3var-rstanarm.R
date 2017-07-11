@@ -15,10 +15,12 @@ sum_svey_model <- function(object, agg_pop) {
   ret_list <- list(mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
                    mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_pop),
                    w_new = model_based_cell_weights(object, cell_table))
+  colnames(ret_list$mu_cell_pred) <- agg_pop$cell_id
+  colnames(ret_list$mu_cell) <- model_data$cell_id
   ret_list$theta_sample <- ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
   ret_list$theta_pred <- ret_list$mu_cell_pred %*% (agg_pop$N / sum(agg_pop$N))
   ret_list$mean_w_new <- data.frame(w_unit = colMeans(ret_list$w_new), 
-                                    id_cell = model_data$id_cell)
+                                    cell_id = model_data$cell_id)
   return(ret_list)
 }
 
@@ -91,61 +93,25 @@ betaI_age_race_edu <- matrix(0, dim(age_race_edu)[2], 1)
 sel_prob <- 1/(1 + exp(-(-2 + age %*% betaI_age + race %*% betaI_race + edu %*% betaI_edu + age_race %*% betaI_age_race + 
     age_edu %*% betaI_age_edu + race_edu %*% betaI_race_edu + age_race_edu %*% betaI_age_race_edu)))
 
-pop_cell_id <- rep(0, N)
-cell_str <- matrix(0, J_age * J_eth * J_edu, q)
-j <- 0
-for (i3 in 1:J_edu) {
-    for (i2 in 1:J_eth) {
-        for (i1 in 1:J_age) {
-            j <- (i3 - 1) * J_eth * J_age + (i2 - 1) * J_age + i1
-            pop_cell_id[acs_ad$age_dc == i1 & acs_ad$race_dc == i2 & acs_ad$educat == i3] <- j
-            cell_str[j, ] <- c(i1, i2, i3)
-        }
-    }
-}
+pop_data <- data.frame(age = acs_ad$age_dc, eth = acs_ad$race_dc, edu = acs_ad$educat, Y = Y) %>%
+  mutate(pop_cell_id = (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age))
+
+pop_cell_id <- pop_data$pop_cell_id
+cell_str <- expand.grid(1:J_age, 1:J_eth, 1:J_edu)
 J_true <- J_age * J_eth * J_edu
 N_cell_true <- as.numeric(table(pop_cell_id))
-
-pop_data <- data.frame(age = acs_ad$age_dc, eth = acs_ad$race_dc, edu = acs_ad$educat, pop_cell_id, Y = Y)
 
 # Aggregates population data by poststratification cell
 agg_pop <- pop_data %>% group_by(age, eth, edu) %>% summarise(N = n(),
                                                               Y = mean(Y),
-                                                              pop_cell_id = first(pop_cell_id)) %>%
+                                                              cell_id = first(pop_cell_id)) %>%
   ungroup() %>% mutate(
     age = as.factor(age),
     eth = as.factor(eth),
-    edu = as.factor(edu),
-    id_cell = paste0(age,eth,edu)
+    edu = as.factor(edu)
     )
 
 mu_cell_true <- aggregate(. ~ pop_cell_id, data = pop_data, mean)$Y
-###------compiling------###
-I <- (runif(N) <= sel_prob)
-
-dat <- data.frame(Y = Y[I], age = acs_ad$age_dc[I], eth = acs_ad$race_dc[I], edu = acs_ad$educat[I])
-#-----------computation--------------#
-### cell id
-n <- dim(dat)[1]  #sample size
-
-cell_id <- pop_cell_id[I]
-
-J <- length(unique(cell_id))
-J_use <- as.numeric(names(table(cell_id)))
-n_cell <- as.numeric(table(cell_id))
-
-N_cell <- as.numeric(table(pop_cell_id))[as.numeric(names(table(cell_id)))]
-
-mu_cell_use <- mu_cell_true[J_use]
-
-dat %>% 
-  group_by(age, eth, edu) %>%
-  summarise(
-    sq = sum((Y - mean(Y))^2)
-  ) %>% ungroup() %>%
-  summarise(
-    ss_cell = sum(sq)
-  ) %>% .$ss_cell -> ss_cell
   
 R <- 3
 n_r <- rep(0, R)
@@ -251,45 +217,31 @@ for (r in 1:R) {
   ### sampling
   I <- (runif(N) <= sel_prob)
   
-  dat <- data.frame(Y = Y[I], age = acs_ad$age_dc[I], eth = acs_ad$race_dc[I], edu = acs_ad$educat[I]) %>%
-    mutate(
-      id_cell = paste0(age,eth,edu)
-    )
-  dat %>% group_by(age, eth, edu) %>% summarise(sd_cell = sd(Y), Y = mean(Y), n = n(),
+  dat <- data.frame(Y = Y[I], age = acs_ad$age_dc[I], eth = acs_ad$race_dc[I], edu = acs_ad$educat[I], cell_id = pop_cell_id[I])
+  dat %>% group_by(age, eth, edu) %>% summarise(sd_cell = sd(Y), Y = mean(Y), n = n(), cell_id = first(cell_id),
                                                 sd_cell = if_else(is.na(sd_cell),0,sd_cell)) -> dat_rstanarm
   dat_rstanarm %>% ungroup() %>% 
     mutate(
-      id_cell = paste0(age,eth,edu),
       age = as.factor(age),
       edu = as.factor(edu),
       eth = as.factor(eth)
     ) %>% 
     left_join(
-      agg_pop[,c('id_cell','N')], 
-    by = 'id_cell'
+      agg_pop[,c('cell_id','N')], 
+    by = 'cell_id'
   ) -> dat_rstanarm
   #-----------computation--------------#
   ### cell id
   n <- dim(dat)[1]  #sample size
-  n_r[r] <- n
-  cell_id <- pop_cell_id[I]
+  cell_id <- dat_rstanarm$cell_id
   
   J <- length(unique(cell_id))
   J_use <- as.numeric(names(table(cell_id)))
-  n_cell <- as.numeric(table(cell_id))
+  n_cell <- dat_rstanarm$n
   
-  N_cell <- as.numeric(table(pop_cell_id))[as.numeric(names(table(cell_id)))]
+  N_cell <- dat_rstanarm$N
   
-  mu_cell_use <- mu_cell_true[J_use]
-  
-  dat %>% rename(Y_indiv = Y) %>% 
-    left_join(dat_rstanarm, by = 'id_cell') %>%
-    mutate(dev_y = Y_indiv - Y) %>% 
-    ungroup() %>% summarise(ss_cell = sum(dev_y^2)) %>% .$ss_cell -> ss_cell
-  # ss_cell <- 0
-  # for (j in 1:J) {
-  #     ss_cell <- ss_cell + sum((dat$Y[cell_id == J_use[j]] - y_cell[j])^2)
-  # }
+  mu_cell_use <- agg_pop %>% filter(cell_id %in% dat_rstanarm$cell_id) %>% .$Y
   
   ###-----------------STAN with structural prior--------------------------###
   
@@ -299,11 +251,11 @@ for (r in 1:R) {
   output <- sum_svey_model(S_arm, agg_pop)
   dat %>%
     left_join(
-      output$mean_w_new, by = 'id_cell'
+      output$mean_w_new, by = 'cell_id'
   ) %>% mutate(
     w_unit = w_unit / mean(w_unit),
     Y_w = w_unit * Y
-  ) %>% select(w_unit, Y_w) -> st_out
+  ) %>% select(cell_id, w_unit, Y_w, Y) -> st_out
   output$mu_w <- mean(st_out$Y_w)
   output$w_unit <- st_out$w_unit
   
@@ -351,11 +303,11 @@ for (r in 1:R) {
   output_iid <- sum_svey_model(object = S1, agg_pop = agg_pop)
   dat %>%
     left_join(
-      output_iid$mean_w_new, by = 'id_cell'
+      output_iid$mean_w_new, by = 'cell_id'
   ) %>% mutate(
     w_unit = w_unit / mean(w_unit),
     Y_w = w_unit * Y
-  ) %>% select(w_unit, Y_w) -> st_iid
+  ) %>% select(cell_id, w_unit, Y_w, Y) -> st_iid
   output_iid$mu_w <- mean(st_iid$Y_w)
   output_iid$w_unit <- st_iid$w_unit
  
@@ -393,24 +345,31 @@ for (r in 1:R) {
   cr_mu_id[r] <- as.numeric(output$mu_w - 1.96 * sd_mu_id[r] <= mean(Y) & mean(Y) <= output_iid$mu_w + 1.96 * sd_mu_id[r])
   
   ###------PS weighting------###
-  w_ps <- rep(1, n)
-  for (i in 1:n) {
-    w_ps[i] <- (N_cell/n_cell)[J_use == cell_id[i]]
-  }
-  w_ps <- w_ps/mean(w_ps)
+  w_ps_df <- dat[,c('cell_id','Y')] %>%
+    left_join(agg_pop[,c('cell_id','N')], by = 'cell_id') %>%
+    left_join(dat_rstanarm[,c('cell_id','n')], by = 'cell_id') %>%
+    mutate(w_ps = N / n,
+           w_ps = w_ps / mean(w_ps),
+           Y_w = w_ps * Y)
+  w_ps <- w_ps_df %>% .$w_ps
   wght_sd_rt_ps[r, ] <- c(sd(w_ps), max(w_ps)/min(w_ps))
 
-
-  mu_ps <- mean(w_ps * dat$Y)
+  mu_ps <- mean(w_ps_df$Y_w)
   bias_mu_ps[r] <- mu_ps - mean(Y)
   sd_mu_ps[r] <- sqrt(sum(w_ps^2 * var(dat$Y)))/n
   cr_mu_ps[r] <- as.numeric(mu_ps - 1.96 * sd_mu_ps[r] <= mean(Y) & mean(Y) <= mu_ps + 1.96 * sd_mu_ps[r])
   ###------inverse-prob weighted estimator------###
   w_ips <- 1/sel_prob[I]/mean(1/sel_prob[I])
+  w_ips_df <- data.frame(w_ips = w_ips, 
+                         Y = dat$Y,
+                         cell_id = dat$cell_id) %>%
+    mutate(
+      Y_w = w_ips * Y
+    )
 
   wght_sd_rt_ips[r, ] <- c(sd(w_ips), max(w_ips)/min(w_ips))
 
-  mu_ips <- mean(w_ips * dat$Y)
+  mu_ips <- mean(w_ips_df$Y_w)
   bias_mu_ips[r] <- mu_ips - mean(Y)
   sd_mu_ips[r] <- sqrt(sum(w_ips^2 * var(dat$Y)))/n
   cr_mu_ips[r] <- as.numeric(mu_ips - 1.96 * sd_mu_ips[r] <= mean(Y) & mean(Y) <= mu_ips + 1.96 * sd_mu_ips[r])
@@ -426,10 +385,14 @@ for (r in 1:R) {
   dat_rake <- rake(dat.design, list(~age, ~eth, ~edu), list(pop.age, pop.eth, pop.edu))
 
   w_rake <- weights(dat_rake)/mean(weights(dat_rake))
-
+  w_rake_df <- data.frame(w_rake = w_rake,
+                          Y = dat$Y,
+                          cell_id = dat$cell_id) %>%
+    mutate(
+      Y_w = w_rake * Y
+    )
 
   wght_sd_rt_rake[r, ] <- c(sd(w_rake), max(w_rake)/min(w_rake))
-
 
   mu_rake <- mean(w_rake * dat$Y)
   bias_mu_rake[r] <- mu_rake - mean(Y)
@@ -440,22 +403,16 @@ for (r in 1:R) {
   st_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
   iid_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
   
-  w_unit <- (output$w_unit[order(agg_pop$pop_cell_id)])[cell_id]
-  w_unit_iid <- (output_iid$w_unit[order(agg_pop$pop_cell_id)])[cell_id]
-
+  cell_str <- agg_pop[,c('age','eth','edu')]
+  
   for (v in 1:q) {
     for (l in 1:l_v[v + 1]) {
-      cell_index <- (1:J_true)[cell_str[, v] == l]
-      id_index <- cell_id %in% (1:J_true)[cell_str[, v] == l]
-      id_cell <- agg_pop %>% mutate(cell_idx = row_number()) %>% filter(pop_cell_id %in% cell_index) %>% .$cell_idx
-      mar_true <- sum(mu_cell_true[cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
+      sub_pop_data <- agg_pop[which(cell_str[,v] == l),c('cell_id','Y','N')] 
+      sub_cell_idx <- sub_pop_data$cell_id
+      cell_pred_idx <- match(sub_cell_idx, colnames(output$mu_cell_pred))
+      mar_true <- sum(sub_pop_data$Y * sub_pop_data$N/sum(sub_pop_data$N))
       # model prediction
-      st_est_sm <- output$mu_cell_pred[,id_cell] %*% (agg_pop$N[id_cell] / agg_pop$N[id_cell])
-      # for (s in 1:dim(output$mu_cell_pred)[1]) {
-      #   st_est_sm[s] <- sum(output$mu_cell_pred[s, cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
-      # }
-      # st_est_sm<-apply(output$mu_cell_pred[,cell_index] *
-      # N_cell_true[cell_index],1,sum)/sum(N_cell_true[cell_index])
+      st_est_sm <- output$mu_cell_pred[,cell_pred_idx] %*% (sub_pop_data$N / sum(sub_pop_data$N))
       bias_sub_st[r, l + sum(l_v[1:v])] <- mean(st_est_sm) - mar_true
       sd_sub_st[r, l + sum(l_v[1:v])] <- sd(st_est_sm)
       if (quantile(st_est_sm, 0.025) <= mar_true & mar_true <= quantile(st_est_sm, 0.975)) {
@@ -463,62 +420,63 @@ for (r in 1:R) {
       }
 
       # independent prior
-      iid_est_sm <- output_iid$mu_cell_pred[,id_cell] %*% (agg_pop$N[id_cell] / agg_pop$N[id_cell])
-      # for (s in 1:dim(output$mu_cell_pred)[1]) {
-      #   iid_est_sm[s] <- sum(output_iid$mu_cell_pred[s, cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
-      # }
+      iid_est_sm <- output_iid$mu_cell_pred[,match(sub_cell_idx, colnames(output_iid$mu_cell_pred))] %*%
+                                          (sub_pop_data$N / sum(sub_pop_data$N))
       bias_sub_iid[r, l + sum(l_v[1:v])] <- mean(iid_est_sm) - mar_true
       sd_sub_iid[r, l + sum(l_v[1:v])] <- sd(iid_est_sm)
       if (quantile(iid_est_sm, 0.025) <= mar_true & mar_true <= quantile(iid_est_sm, 0.975)) {
         cr_sub_iid[r, l + sum(l_v[1:v])] <- 1
       }
       # model-based weights under st prior
-      est_st_wt <- sum(w_unit[id_index] * dat$Y[id_index])/sum(w_unit[id_index])
+      unit_idx <- st_out$cell_id %in% sub_cell_idx
+      est_st_wt <- sum(st_out$Y_w[unit_idx])/sum(st_out$w_unit[unit_idx])
       bias_sub_st_wt[r, l + sum(l_v[1:v])] <- est_st_wt - mar_true
-      sd_sub_st_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_unit[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit[id_index])
+      sd_sub_st_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(st_out$w_unit[unit_idx]^2 * var(st_out$Y[unit_idx])))/sum(st_out$w_unit[unit_idx])
       cr_sub_st_wt[r, l + sum(l_v[1:v])] <- as.numeric(est_st_wt - 1.96 * sd_sub_st_wt[r, l + sum(l_v[1:v])] <=
                                                          mar_true & mar_true <= est_st_wt + 1.96 * sd_sub_st_wt[r, l + sum(l_v[1:v])])
 
       # model-based weights under independent prior
-      est_iid_wt <- sum(w_unit_iid[id_index] * dat$Y[id_index])/sum(w_unit_iid[id_index])
+      unit_idx <- st_iid$cell_id %in% sub_cell_idx
+      est_iid_wt <- sum(st_iid$Y_w[unit_idx])/sum(st_iid$w_unit[unit_idx])
       bias_sub_iid_wt[r, l + sum(l_v[1:v])] <- est_iid_wt - mar_true
-      sd_sub_iid_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_unit_iid[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit_iid[id_index])
+      sd_sub_iid_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(st_iid$w_unit[unit_idx]^2 * var(st_iid$Y[unit_idx])))/sum(st_iid$w_unit[unit_idx])
       cr_sub_iid_wt[r, l + sum(l_v[1:v])] <- as.numeric(est_iid_wt - 1.96 * sd_sub_iid_wt[r, l + sum(l_v[1:v])] <=
                                                           mar_true & mar_true <= est_iid_wt + 1.96 * sd_sub_iid_wt[r, l + sum(l_v[1:v])])
 
+      
+      unit_idx <- w_ps_df$cell_id %in% sub_cell_idx
       # ps weights
-      est_ps_wt <- sum(w_ps[id_index] * dat$Y[id_index])/sum(w_ps[id_index])
+      est_ps_wt <- sum(w_ps_df$Y_w[unit_idx])/sum(w_ps_df$w_ps[unit_idx])
       bias_sub_ps_wt[r, l + sum(l_v[1:v])] <- est_ps_wt - mar_true
-      sd_sub_ps_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_ps[id_index]^2 * var(dat$Y[id_index])))/sum(w_ps[id_index])
+      sd_sub_ps_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_ps_df$w_ps[unit_idx]^2 * var(dat$Y[unit_idx])))/sum(w_ps_df$w_ps[unit_idx])
       cr_sub_ps_wt[r, l + sum(l_v[1:v])] <- as.numeric(est_ps_wt - 1.96 * sd_sub_ps_wt[r, l + sum(l_v[1:v])] <=
                                                          mar_true & mar_true <= est_ps_wt + 1.96 * sd_sub_ps_wt[r, l + sum(l_v[1:v])])
+      unit_idx <- w_ips_df$cell_id %in% sub_cell_idx
       # ips weights
-      est_ips_wt <- sum(w_ips[id_index] * dat$Y[id_index])/sum(w_ips[id_index])
+      est_ips_wt <- sum(w_ips_df$Y_w[unit_idx])/sum(w_ips_df$w_ips[unit_idx])
       bias_sub_ips_wt[r, l + sum(l_v[1:v])] <- est_ips_wt - mar_true
-      sd_sub_ips_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_ips[id_index]^2 * var(dat$Y[id_index])))/sum(w_ips[id_index])
+      sd_sub_ips_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_ips_df$w_ips[unit_idx]^2 * var(w_ips_df$Y[unit_idx])))/sum(w_ips_df$w_ips[unit_idx])
       cr_sub_ips_wt[r, l + sum(l_v[1:v])] <- as.numeric(est_ips_wt - 1.96 * sd_sub_ips_wt[r, l + sum(l_v[1:v])] <=
                                                           mar_true & mar_true <= est_ips_wt + 1.96 * sd_sub_ips_wt[r, l + sum(l_v[1:v])])
 
+      unit_idx <- w_rake_df$cell_id %in% sub_cell_idx
       # rake weights
-      est_rake_wt <- sum(w_rake[id_index] * dat$Y[id_index])/sum(w_rake[id_index])
+      est_rake_wt <- sum(w_rake_df$Y_w[unit_idx])/sum(w_rake_df$w_rake[unit_idx])
       bias_sub_rake_wt[r, l + sum(l_v[1:v])] <- est_rake_wt - mar_true
-      sd_sub_rake_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_rake[id_index]^2 * var(dat$Y[id_index])))/sum(w_rake[id_index])
+      sd_sub_rake_wt[r, l + sum(l_v[1:v])] <- sqrt(sum(w_rake_df$w_rake[unit_idx]^2 * var(w_rake_df$Y[unit_idx])))/sum(w_rake_df$w_rake[unit_idx])
       cr_sub_rake_wt[r, l + sum(l_v[1:v])] <- as.numeric(est_rake_wt - 1.96 * sd_sub_rake_wt[r, l + sum(l_v[1:v])] <=
                                                            mar_true & mar_true <= est_rake_wt + 1.96 * sd_sub_rake_wt[r, l + sum(l_v[1:v])])
 
     }
   }
   # interaction
-  cell_index <- (1:J_true)[cell_str[, 1] == 1 & cell_str[, 2] > 1]
-  id_index <- cell_id %in% (1:J_true)[cell_str[, 1] == 1 & cell_str[, 2] > 1]
-  mar_true <- sum(mu_cell_true[cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
-  id_cell <- agg_pop %>% mutate(cell_idx = row_number()) %>% filter(pop_cell_id %in% cell_index) %>% .$cell_idx
+  sub_pop_data <- agg_pop[which(cell_str[, 1] == 1 & cell_str[, 2] != 1),c('cell_id','Y','N')] 
+  sub_cell_idx <- sub_pop_data$cell_id
+  cell_pred_idx <- match(sub_cell_idx, colnames(output$mu_cell_pred))
+  mar_true <- sum(sub_pop_data$Y * sub_pop_data$N)/sum(sub_pop_data$N)
 
   # model prediction
-  st_est_sm <- output$mu_cell_pred[,id_cell] %*% (agg_pop$N[id_cell] / agg_pop$N[id_cell])
-  # for (s in 1:dim(output$mu_cell_pred)[1]) {
-  #   st_est_sm[s] <- sum(output$mu_cell_pred[s, cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
-  # }
+  st_est_sm <- output$mu_cell_pred[,cell_pred_idx] %*% (sub_pop_data$N / sum(sub_pop_data$N))
   bias_sub_st_int[r] <- mean(st_est_sm) - mar_true
   sd_sub_st_int[r] <- sd(st_est_sm)
   if (quantile(st_est_sm, 0.025) <= mar_true & mar_true <= quantile(st_est_sm, 0.975)) {
@@ -526,10 +484,8 @@ for (r in 1:R) {
   }
 
   # independent prior
-  iid_est_sm <- output_iid$mu_cell_pred[,id_cell] %*% (agg_pop$N[id_cell] / agg_pop$N[id_cell])
-  # for (s in 1:dim(output$mu_cell_pred)[1]) {
-  #   iid_est_sm[s] <- sum(output_iid$mu_cell_pred[s, cell_index] * N_cell_true[cell_index])/sum(N_cell_true[cell_index])
-  # }
+  iid_est_sm <- output_iid$mu_cell_pred[,match(sub_cell_idx, colnames(output_iid$mu_cell_pred))] %*% 
+                (sub_pop_data$N / sum(sub_pop_data$N))
   bias_sub_iid_int[r] <- mean(iid_est_sm) - mar_true
   sd_sub_iid_int[r] <- sd(iid_est_sm)
   if (quantile(iid_est_sm, 0.025) <= mar_true & mar_true <= quantile(iid_est_sm, 0.975)) {
@@ -537,36 +493,41 @@ for (r in 1:R) {
   }
 
   # model-based weights under st prior
-  est_st_wt <- sum(w_unit[id_index] * dat$Y[id_index])/sum(w_unit[id_index])
+  unit_idx <- st_out$cell_id %in% sub_cell_idx
+  est_st_wt <- sum(st_out$Y_w[unit_idx])/sum(st_out$w_unit[unit_idx])
   bias_sub_st_wt_int[r] <- est_st_wt - mar_true
-  sd_sub_st_wt_int[r] <- sqrt(sum(w_unit[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit[id_index])
+  sd_sub_st_wt_int[r] <- sqrt(sum(st_out$w_unit[unit_idx]^2 * var(st_out$Y[unit_idx])))/sum(st_out$w_unit[unit_idx])
   cr_sub_st_wt_int[r] <- as.numeric(est_st_wt - 1.96 * sd_sub_st_wt_int[r] <= mar_true & mar_true <= est_st_wt +
                                       1.96 * sd_sub_st_wt_int[r])
 
+  unit_idx <- st_iid$cell_id %in% sub_cell_idx
   # model-based weights under independent prior
-  est_iid_wt <- sum(w_unit_iid[id_index] * dat$Y[id_index])/sum(w_unit_iid[id_index])
+  est_iid_wt <- sum(st_iid$Y_w)/sum(st_iid$w_unit[unit_idx])
   bias_sub_iid_wt_int[r] <- est_iid_wt - mar_true
-  sd_sub_iid_wt_int[r] <- sqrt(sum(w_unit_iid[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit_iid[id_index])
+  sd_sub_iid_wt_int[r] <- sqrt(sum(st_iid$w_unit[unit_idx]^2 * var(st_iid$Y[unit_idx])))/sum(st_iid$w_unit[unit_idx])
   cr_sub_iid_wt_int[r] <- as.numeric(est_iid_wt - 1.96 * sd_sub_iid_wt_int[r] <= mar_true & mar_true <= est_iid_wt +
                                        1.96 * sd_sub_iid_wt_int[r])
 
   # ps weights
-  est_ps_wt <- sum(w_ps[id_index] * dat$Y[id_index])/sum(w_ps[id_index])
+  unit_idx <- w_ps_df$cell_id %in% sub_cell_idx
+  est_ps_wt <- sum(w_ps_df$Y_w)/sum(w_ps_df$w_ps[unit_idx])
   bias_sub_ps_wt_int[r] <- est_ps_wt - mar_true
-  sd_sub_ps_wt_int[r] <- sqrt(sum(w_ps[id_index]^2 * var(dat$Y[id_index])))/sum(w_ps[id_index])
+  sd_sub_ps_wt_int[r] <- sqrt(sum(w_ps_df$w_ps[unit_idx]^2 * var(w_ps_df$Y[unit_idx])))/sum(w_ps_df$w_ps[unit_idx])
   cr_sub_ps_wt_int[r] <- as.numeric(est_ps_wt - 1.96 * sd_sub_ps_wt_int[r] <= mar_true & mar_true <= est_ps_wt +
                                       1.96 * sd_sub_ps_wt_int[r])
   # ips weights
-  est_ips_wt <- sum(w_ips[id_index] * dat$Y[id_index])/sum(w_ips[id_index])
+  unit_idx <- w_ips_df$cell_id %in% sub_cell_idx
+  est_ips_wt <- sum(w_ips_df$Y_w[unit_idx])/sum(w_ips_df$w_ips[unit_idx])
   bias_sub_ips_wt_int[r] <- est_ips_wt - mar_true
-  sd_sub_ips_wt_int[r] <- sqrt(sum(w_ips[id_index]^2 * var(dat$Y[id_index])))/sum(w_ips[id_index])
+  sd_sub_ips_wt_int[r] <- sqrt(sum(w_ips_df$w_ips[unit_idx]^2 * var(w_ips_df$Y[unit_idx])))/sum(w_ips_df$w_ips[unit_idx])
   cr_sub_ips_wt_int[r] <- as.numeric(est_ips_wt - 1.96 * sd_sub_ips_wt_int[r] <= mar_true & mar_true <= est_ips_wt +
                                        1.96 * sd_sub_ips_wt_int[r])
 
   # rake weights
-  est_rake_wt <- sum(w_rake[id_index] * dat$Y[id_index])/sum(w_rake[id_index])
+  unit_idx <- w_rake_df$cell_id %in% sub_cell_idx
+  est_rake_wt <- sum(w_rake_df$Y_w[unit_idx])/sum(w_rake_df$w_rake[unit_idx])
   bias_sub_rake_wt_int[r] <- est_rake_wt - mar_true
-  sd_sub_rake_wt_int[r] <- sqrt(sum(w_rake[id_index]^2 * var(dat$Y[id_index])))/sum(w_rake[id_index])
+  sd_sub_rake_wt_int[r] <- sqrt(sum(w_rake_df$w_rake[unit_idx]^2 * var(w_rake_df$Y[unit_idx])))/sum(w_rake_df$w_rake[unit_idx])
   cr_sub_rake_wt_int[r] <- as.numeric(est_rake_wt - 1.96 * sd_sub_rake_wt_int[r] <= mar_true & mar_true <= est_rake_wt +
                                         1.96 * sd_sub_rake_wt_int[r])
      
