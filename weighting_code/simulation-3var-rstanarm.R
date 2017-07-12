@@ -102,6 +102,7 @@ pop_data <- data.frame(age = acs_ad$age_dc, eth = acs_ad$race_dc, edu = acs_ad$e
   mutate(pop_cell_id = (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age))
 
 pop_cell_id <- pop_data$pop_cell_id
+
 #cell_str <- expand.grid(1:J_age, 1:J_eth, 1:J_edu) #the same as agg_pop[,c('age','eth','edu')]
 
 #N_cell_true <- as.numeric(table(pop_cell_id))
@@ -242,11 +243,18 @@ for (r in 1:R) {
   
   J <- length(unique(cell_id))
   J_use <- as.numeric(names(table(cell_id)))
+<<<<<<< HEAD
   
   #n_cell <- dat_rstanarm$n
   
   #N_cell <- dat_rstanarm$N
   
+=======
+  n_cell <- dat_rstanarm$n
+  
+  N_cell <- dat_rstanarm$N
+  
+>>>>>>> 50298717fcc5ceba50c036539dc81543a84eaa12
   mu_cell_use <- agg_pop %>% filter(cell_id %in% dat_rstanarm$cell_id) %>% .$Y
   
   ###-----------------STAN with structural prior--------------------------###
