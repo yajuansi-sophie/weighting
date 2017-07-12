@@ -121,7 +121,7 @@ model {
   
   y_cell ~ normal(mu_cell,sigma_y_cell);
 
-  ss_cell / pow(sigma_y,2) ~ chi_square(n-1);
+  ss_cell / pow(sigma_y,2) ~ chi_square(n-J);
   increment_log_prob(log(2) - 3 * log(sigma_y));
 
 }

@@ -3,9 +3,14 @@ library(survey)
 library(dplyr)
 library(foreign)
 
+if (!require(devtools)) {
+  install.packages("devtools")
+  library(devtools)
+}
+install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
 set.seed(20150213)
 
-source('weighting_code/cell_weights.R')
+source('cell_weights.R')
 
 #' @param object rstanarm fit
 #' @param agg_pop poststrat frame
@@ -60,7 +65,7 @@ q <- 3  # #weighting variables
 J_age <- length(unique(acs_ad$age_dc))
 J_eth <- length(unique(acs_ad$race_dc))
 J_edu <- length(unique(acs_ad$educat))
-
+J_true <- J_age * J_eth * J_edu
 N <- dim(acs_ad)[1]
 
 acs_ad$age_dc <- as.factor(acs_ad$age_dc)
