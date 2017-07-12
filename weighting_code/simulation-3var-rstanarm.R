@@ -3,14 +3,9 @@ library(survey)
 library(dplyr)
 library(foreign)
 
-if (!require(devtools)) {
-  install.packages("devtools")
-  library(devtools)
-}
-install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
 set.seed(20150213)
 
-source('cell_weights.R')
+source('weighting_code/cell_weights.R')
 
 #' @param object rstanarm fit
 #' @param agg_pop poststrat frame
@@ -42,7 +37,7 @@ sum_weights <- function(weight_df, idx, comp_stat) {
   return(list(bias = bias, sd_wt = sd_wt, cr_wt = cr_wt))
 }
 
-acs_pop <- read.dta("data/acs_nyc_2011_wpov1.dta", convert.factors = FALSE)
+acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", convert.factors = FALSE)
   
 acs_ad <- acs_pop %>% filter(age >= 18) %>%
   mutate(
@@ -115,9 +110,10 @@ pop_data <- data.frame(age = acs_ad$age_dc, eth = acs_ad$race_dc, edu = acs_ad$e
   mutate(pop_cell_id = paste0(age, eth, edu))
 
 pop_cell_id <- pop_data$pop_cell_id
-cell_str <- expand.grid(age = 1:J_age, eth = 1:J_eth, edu = 1:J_edu) 
-pstrat_cell_ids <- cell_str %>% mutate(pop_cell_id = paste0(age, eth, edu)) %>% .$pop_cell_id
-J_true <- J_age * J_eth * J_edu
+pstrat_cell_ids <- expand.grid(age = 1:J_age, eth = 1:J_eth, edu = 1:J_edu) %>%
+  mutate(pop_cell_id = paste0(age, eth, edu)) %>%
+  .$pop_cell_id
+J_true <- length(pstrat_cell_ids)
 
 # Aggregates population data by poststratification cell
 agg_pop <- pop_data %>% group_by(age, eth, edu) %>%
