@@ -1,4 +1,4 @@
-library(rstanarm)
+library(rstanarm) # requires structured_prior_merge branch
 library(survey)
 library(dplyr)
 library(foreign)
@@ -11,16 +11,24 @@ source('weighting_code/cell_weights.R')
 #' @param agg_pop poststrat frame
 sum_svey_model <- function(object, agg_pop) {
   model_data <- object$data
-  cell_table <- model_data[,c('N','n')]
-  ret_list <- list(mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
-                   mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_pop),
-                   w_new = model_based_cell_weights(object, cell_table))
+  cell_table <- model_data[, c('N', 'n')]
+  ret_list <-
+    list(
+      mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
+      mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_pop),
+      w_new = model_based_cell_weights(object, cell_table)
+    )
   colnames(ret_list$mu_cell_pred) <- agg_pop$cell_id
   colnames(ret_list$mu_cell) <- model_data$cell_id
-  ret_list$theta_sample <- ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
-  ret_list$theta_pred <- ret_list$mu_cell_pred %*% (agg_pop$N / sum(agg_pop$N))
-  ret_list$mean_w_new <- data.frame(w_unit = colMeans(ret_list$w_new), 
-                                    cell_id = model_data$cell_id)
+  
+  ret_list$theta_sample <-
+    ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
+  ret_list$theta_pred <-
+    ret_list$mu_cell_pred %*% (agg_pop$N / sum(agg_pop$N))
+  ret_list$mean_w_new <-
+    data.frame(w_unit = colMeans(ret_list$w_new),
+               cell_id = model_data$cell_id)
+  
   return(ret_list)
 }
 
@@ -29,16 +37,20 @@ sum_weights <- function(weight_df, idx, comp_stat) {
   Y_sub <- sub_weight_df$Y
   Y_w_sub <- sub_weight_df$Y_w
   w_sub <- sub_weight_df$w
-  est_wt <- sum(Y_w_sub)/sum(w_sub)
+  est_wt <- sum(Y_w_sub) / sum(w_sub)
   bias <- est_wt - comp_stat
-  sd_wt <- sqrt(sum(w_sub^2 * var(Y_sub)))/sum(w_sub)
-  cr_wt <- as.numeric(est_wt - 1.96 * sd_wt <= comp_stat & comp_stat <= est_wt +
-                                        1.96 * sd_wt)
-  return(list(bias = bias, sd_wt = sd_wt, cr_wt = cr_wt))
+  sd_wt <- sqrt(sum(w_sub ^ 2 * var(Y_sub))) / sum(w_sub)
+  cr_wt <- as.numeric(est_wt - 1.96 * sd_wt <= comp_stat & comp_stat <= est_wt + 1.96 * sd_wt)
+  return(list(
+    bias = bias,
+    sd_wt = sd_wt,
+    cr_wt = cr_wt
+  ))
 }
 
 # load and clean population data
-acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", convert.factors = FALSE)
+acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", 
+                    convert.factors = FALSE)
 acs_ad <- 
   acs_pop %>% 
   filter(age >= 18) %>%
@@ -75,7 +87,7 @@ edu <- model.matrix( ~ edu, acs_ad)
 age_eth <- model.matrix(~ 0 + age:eth, acs_ad)
 age_edu <- model.matrix(~ 0 + age:edu, acs_ad)
 eth_edu <- model.matrix(~ 0 + eth:edu, acs_ad)
-age_eth_edu <- model.matrix( ~ 0 + age:eth:edu, acs_ad)
+age_eth_edu <- model.matrix(~ 0 + age:eth:edu, acs_ad)
 
 ### simulate Y case 1)
 
@@ -120,7 +132,8 @@ sel_prob <-
       age_eth_edu %*% betaI_age_eth_edu
   )
 
-pop_data <- acs_ad %>%
+pop_data <- 
+  acs_ad %>%
   select(age, eth, edu) %>%
   mutate(pop_cell_id = paste0(age, eth, edu), 
          Y = as.vector(y))
@@ -320,8 +333,10 @@ for (r in 1:R) {
     cr_mu_sample[r] <- 1
   
   ### population cell mean
-  bias_mu_popcell[r, colnames(output$mu_cell_pred)] <- colMeans(output$mu_cell_pred) - agg_pop$Y
-  sd_mu_popcell[r, colnames(output$mu_cell_pred)] <- apply(output$mu_cell_pred, 2, sd)
+  bias_mu_popcell[r, colnames(output$mu_cell_pred)] <- 
+    colMeans(output$mu_cell_pred) - agg_pop$Y
+  sd_mu_popcell[r, colnames(output$mu_cell_pred)] <- 
+    apply(output$mu_cell_pred, 2, sd)
   cr_mu_popcell[r, colnames(output$mu_cell_pred)] <-
     as.numeric(
       apply(output$mu_cell_pred, 2, quantile, 0.025) <= agg_pop$Y &
@@ -330,8 +345,10 @@ for (r in 1:R) {
     )
   
   ### sampled cell mean
-  bias_mu_cell[r, colnames(output$mu_cell)] <- colMeans(output$mu_cell) - dat_rstanarm$Y
-  sd_mu_cell[r, colnames(output$mu_cell)] <- apply(output$mu_cell, 2, sd)
+  bias_mu_cell[r, colnames(output$mu_cell)] <- 
+    colMeans(output$mu_cell) - dat_rstanarm$Y
+  sd_mu_cell[r, colnames(output$mu_cell)] <- 
+    apply(output$mu_cell, 2, sd)
   cr_mu_cell[r, colnames(output$mu_cell)] <-
     as.numeric(
       apply(output$mu_cell, 2, quantile, 0.025) <= dat_rstanarm$Y &
@@ -391,8 +408,10 @@ for (r in 1:R) {
     cr_mu_sample_iid[r] <- 1
   
   ### population cell mean
-  bias_mu_popcell_iid[r, colnames(output_iid$mu_cell_pred)] <- colMeans(output_iid$mu_cell_pred) - agg_pop$Y
-  sd_mu_popcell_iid[r, colnames(output_iid$mu_cell_pred)] <- apply(output_iid$mu_cell_pred, 2, sd)
+  bias_mu_popcell_iid[r, colnames(output_iid$mu_cell_pred)] <- 
+    colMeans(output_iid$mu_cell_pred) - agg_pop$Y
+  sd_mu_popcell_iid[r, colnames(output_iid$mu_cell_pred)] <- 
+    apply(output_iid$mu_cell_pred, 2, sd)
   cr_mu_popcell_iid[r, colnames(output_iid$mu_cell_pred)] <-
     as.numeric(
       apply(output_iid$mu_cell_pred, 2, quantile, 0.025) <= agg_pop$Y &
@@ -400,8 +419,10 @@ for (r in 1:R) {
     )
   
   ### sampled cell mean
-  bias_mu_cell_iid[r, colnames(output_iid$mu_cell)] <- colMeans(output_iid$mu_cell) - dat_rstanarm$Y
-  sd_mu_cell_iid[r, colnames(output_iid$mu_cell)] <- apply(output_iid$mu_cell, 2, sd)
+  bias_mu_cell_iid[r, colnames(output_iid$mu_cell)] <- 
+    colMeans(output_iid$mu_cell) - dat_rstanarm$Y
+  sd_mu_cell_iid[r, colnames(output_iid$mu_cell)] <- 
+    apply(output_iid$mu_cell, 2, sd)
   cr_mu_cell_iid[r, colnames(output_iid$mu_cell)] <-
     as.numeric(
       apply(output_iid$mu_cell, 2, quantile, 0.025) <= dat_rstanarm$Y &
@@ -492,8 +513,7 @@ for (r in 1:R) {
         cr_sub_st[r, l + sum(l_v[1:v])] <- 1
 
       # independent prior
-      iid_est_sm <- output_iid$mu_cell_pred[,sub_cell_idx] %*%
-                                          (sub_pop_data$N / sum(sub_pop_data$N))
+      iid_est_sm <- output_iid$mu_cell_pred[,sub_cell_idx] %*% (sub_pop_data$N / sum(sub_pop_data$N))
       bias_sub_iid[r, l + sum(l_v[1:v])] <- mean(iid_est_sm) - mar_true
       sd_sub_iid[r, l + sum(l_v[1:v])] <- sd(iid_est_sm)
       if (quantile(iid_est_sm, 0.025) <= mar_true & mar_true <= quantile(iid_est_sm, 0.975)) {
