@@ -163,8 +163,6 @@ comp_pred_s <- posterior_linpred(S, newdata = comp_pop_df)
 # hist(output$mu_cell_pred[,tail(order(abs(colMeans(output$mu_cell_pred)-colMeans(comp_pred_df))),1)])
 # agg_pop_df[tail(order(abs(colMeans(output$mu_cell_pred)-colMeans(comp_pred_df))),10),]
 
-
-
 ### model-based weights
 dat %>%
   left_join(
