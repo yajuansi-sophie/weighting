@@ -134,6 +134,7 @@ dat_rstanarm <- dat %>%
   mutate(
     sd_cell = if_else(is.na(sd_cell), 0, sd_cell)
   ) %>%
+  ## this line needs to be changed to match the output from svytable
   left_join(agg_pop[,c('cell_id','N')], by = 'cell_id')
 
 
@@ -151,6 +152,10 @@ S <- stan_glmer(formula = ff, data = dat_rstanarm, iter = 8000, chains = 4, core
 output_st <- sum_svey_model(S, agg_pop)
 
 comp_fit_df <- arrange(dat_rstanarm, j)
+w_new_dist <- model_based_cell_weights(S, comp_fit_df)
+w_new <- colMeans(w_new_dist)
+
+
 comp_pop_df <- arrange(agg_pop, j)
 comp_fit_s <- posterior_linpred(S, newdata = pred_df)
 comp_pred_s <- posterior_linpred(S, newdata = comp_pop_df)
