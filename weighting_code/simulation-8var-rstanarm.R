@@ -252,8 +252,8 @@ dat %>%
   left_join(
     output_st$mean_w_new, by = 'cell_id'
 ) %>% mutate(
-  w = w_unit / mean(w_unit),
-  Y_w = w * Y
+  w_unit = w_unit / mean(w_unit),
+  Y_w = w_unit * Y
 ) %>% select(cell_id, w_unit, Y_w, Y) -> st_out
 output_st$mu_w <- mean(st_out$Y_w)
 output_st$w_unit <- st_out$w_unit
@@ -265,7 +265,7 @@ dat %>%
   left_join(
     output_iid$mean_w_new, by = 'cell_id'
 ) %>% mutate(
-  w = w_unit / mean(w_unit),
+  w_unit = w_unit / mean(w_unit),
   Y_w = w * Y
 ) %>% select(cell_id, w_unit, Y_w, Y) -> iid_out
 output_iid$mu_w <- mean(iid_out$Y_w)
