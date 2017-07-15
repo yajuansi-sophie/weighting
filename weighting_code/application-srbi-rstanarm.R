@@ -18,29 +18,39 @@ set.seed(20150213)
 source('weighting_code/cell_weights.R')
 sum_svey_model <- function(object, agg_p) {
   model_data <- object$data
-  cell_table <- model_data[,c('N','n')]
-  ret_list <- list(mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
-                   mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_p),
-                   w_new = model_based_cell_weights(object, cell_table))
+  cell_table <- model_data[, c('N', 'n')]
+  ret_list <-
+    list(
+      mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
+      mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_p),
+      w_new = model_based_cell_weights(object, cell_table)
+    )
   colnames(ret_list$mu_cell_pred) <- agg_p$cell_id
   colnames(ret_list$mu_cell) <- model_data$cell_id
-  ret_list$theta_sample <- ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
-  ret_list$theta_pred <- ret_list$mu_cell_pred %*% (agg_p$N / sum(agg_p$N))
-  ret_list$mean_w_new <- data.frame(w_unit = colMeans(ret_list$w_new), 
-                                    cell_id = model_data$cell_id)
+  ret_list$theta_sample <-
+    ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
+  ret_list$theta_pred <-
+    ret_list$mu_cell_pred %*% (agg_p$N / sum(agg_p$N))
+  ret_list$mean_w_new <-
+    data.frame(w_unit = colMeans(ret_list$w_new),
+               cell_id = model_data$cell_id)
   return(ret_list)
 }
 
-#----------data simulation-----------------#
+# sample data
 data <- read.dta("weighting_code/data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
-SRBIdata <- data[data$sample == "SRBI", ]
+SRBIdata <- data %>% filter(sample == "SRBI")
 
-Y_sys <- as.numeric(SRBIdata[, names(SRBIdata) == "bestlife"])
-Y_sys[is.na(Y_sys)] <- sample(Y_sys[!is.na(Y_sys)], sum(is.na(Y_sys)), replace = T)
-# hist(Y_sys) ACS data
-acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", convert.factors = FALSE)
+Y_sys <- as.numeric(SRBIdata$bestlife)
+Y_sys[is.na(Y_sys)] <-
+  sample(Y_sys[!is.na(Y_sys)], sum(is.na(Y_sys)), replace = TRUE)
 
-acs_ad <- acs_pop %>% filter(age >= 18) %>%
+# pop data (ACS)
+acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", 
+                    convert.factors = FALSE)
+acs_ad <- 
+  acs_pop %>% 
+  filter(age >= 18) %>%
   mutate(
     age_gp = cut(x = age,
                   breaks = c(0,34,44,54,64,Inf),
@@ -54,7 +64,8 @@ acs_ad <- acs_pop %>% filter(age >= 18) %>%
     eldx_ca = if_else(eldx > 1, 3, eldx + 1),
     childx_ca = if_else(childx > 2, 4, childx + 1),
     personx_ca = if_else(personx > 4,4,personx)
-  ) %>% select(-age_gp, -opmres_gp) %>%
+  ) %>% 
+  select(-age_gp, -opmres_gp) %>%
   mutate(
     age = as.factor(age_dc),
     eth = as.factor(race_dc),
@@ -67,8 +78,8 @@ acs_ad <- acs_pop %>% filter(age >= 18) %>%
     cell_id = paste0(age, eth, edu, inc)
   )
 
-# what about filtering under 18?
-SRBIdata <- SRBIdata %>% #filter(age >= 18) %>%
+SRBIdata <- 
+  SRBIdata %>% 
   mutate(
     age_gp = cut(x = age,
                   breaks = c(0,34,44,54,64,Inf),
@@ -86,7 +97,8 @@ SRBIdata <- SRBIdata %>% #filter(age >= 18) %>%
     eldx_ca = if_else(eldx > 1, 3, eldx + 1),
     childx_ca = if_else(childx > 2, 4, childx + 1),
     personx_ca = if_else(personx > 4,4L,personx)
-  ) %>% select(-age_gp, -opmres_gp) %>%
+  ) %>% 
+  select(-age_gp, -opmres_gp) %>%
   mutate(
     age = as.factor(age_dc),
     eth = as.factor(race_dc),
@@ -108,34 +120,53 @@ J_cld <- length(unique(acs_ad$cld))
 J_ps <- length(unique(acs_ad$ps))
 
 acs_ds_ad <- svydesign(id = ~1, weights = ~perwt, data = acs_ad)
-acs_N <- as.numeric(svytable(~age_dc + race_dc + educat + opmres_x, acs_ds_ad))
+acs_tab <- svytable(~age_dc + race_dc + educat + opmres_x, acs_ds_ad)
+acs_N <- as.numeric(acs_tab)
+acs_tab_df <- as.data.frame(acs_tab) 
+colnames(acs_tab_df) <- c("age", "eth", "edu", "inc", "N")
+agg_pop <- 
+  acs_tab_df %>% 
+  mutate(
+    cell_id = paste0(age, eth, edu, inc), 
+    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age)
+    ) %>%
+  arrange(j) %>%
+  filter(cell_id != "4431") # cell doesn't exist in ACS data
+
 ###--------Four variable case: age, race, edu and inc------------###
 
-agg_pop <- acs_ad %>%
-  group_by(age, eth, edu, inc) %>%
-  summarise(N = n(),
-            cell_id = first(cell_id)) %>% 
-  mutate(
-    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age)
-    ) %>% ungroup()
-
-dat <- data.frame(Y = Y_sys, age = SRBIdata$age, eth = SRBIdata$eth, edu = SRBIdata$edu, sex = SRBIdata$sex, 
-                  inc = SRBIdata$inc, eld = SRBIdata$eld, cld = SRBIdata$cld, ps = SRBIdata$ps) %>%
-  mutate(cell_id = paste0(age, eth, edu, inc),
-         j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age))
-
-dat_rstanarm <- dat %>% 
-  group_by(age, eth, edu, inc) %>%
-  summarise(sd_cell = sd(Y),
-            n = n(),
-            Y = mean(Y),
-            cell_id = first(cell_id),
-            j = first(j)) %>%
-  mutate(
-    sd_cell = if_else(is.na(sd_cell), 0, sd_cell)
+dat <-
+  data.frame(
+    Y = Y_sys,
+    age = SRBIdata$age,
+    eth = SRBIdata$eth,
+    edu = SRBIdata$edu,
+    sex = SRBIdata$sex,
+    inc = SRBIdata$inc,
+    eld = SRBIdata$eld,
+    cld = SRBIdata$cld,
+    ps = SRBIdata$ps
   ) %>%
+  mutate(
+    cell_id = paste0(age, eth, edu, inc),
+    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age)
+  ) %>%
+  arrange(j)
+
+dat_rstanarm <-
+  dat %>%
+  group_by(age, eth, edu, inc) %>%
+  summarise(
+    sd_cell = sd(Y),
+    n = n(),
+    Y = mean(Y),
+    cell_id = first(cell_id),
+    j = first(j)
+  ) %>%
+  mutate(sd_cell = if_else(is.na(sd_cell), 0, sd_cell)) %>%
   ## this line needs to be changed to match the output from svytable
-  left_join(agg_pop[,c('cell_id','N')], by = 'cell_id')
+  left_join(agg_pop[, c('cell_id', 'N')], by = 'cell_id') %>%
+  arrange(j)
 
 
 ###-----------------STAN with structural prior--------------------------###
@@ -143,39 +174,31 @@ dat_rstanarm <- dat %>%
 ff <- as.formula(Y ~ 1 + (1 | age) + (1 | eth) + (1 | edu) + (1 | inc) +
                    (1 | age:eth) + (1 | age:edu) + (1 | age:inc) + (1 | eth:edu) +
                    (1 | eth:inc) + (1 | age:eth:edu) + (1 | age:eth:inc))
-S <- stan_glmer(formula = ff, data = dat_rstanarm, iter = 8000, chains = 4, cores = 4, 
-                          prior_covariance = rstanarm::mrp_structured(cell_size = dat_rstanarm$n, cell_sd = dat_rstanarm$sd_cell), 
-                          seed = 123, prior_aux = cauchy(0,5), prior_intercept = normal(0, 100, autoscale = FALSE))
+fit <-
+  stan_glmer(
+    formula = ff,
+    data = dat_rstanarm,
+    iter = 8000,
+    chains = 4,
+    cores = 4,
+    prior_covariance = 
+      rstanarm::mrp_structured(cell_size = dat_rstanarm$n, 
+                               cell_sd = dat_rstanarm$sd_cell),
+    seed = 123,
+    prior_aux = cauchy(0, 5),
+    prior_intercept = normal(0, 100, autoscale = FALSE)
+  )
 
-# tt <- rstan::extract(S$stanfit)
-
-output_st <- sum_svey_model(S, agg_pop)
-
-comp_fit_df <- arrange(dat_rstanarm, j)
-w_new_dist <- model_based_cell_weights(S, comp_fit_df)
-w_new <- colMeans(w_new_dist)
-
-
-comp_pop_df <- arrange(agg_pop, j)
-comp_fit_s <- posterior_linpred(S, newdata = pred_df)
-comp_pred_s <- posterior_linpred(S, newdata = comp_pop_df)
-
-# head(colMeans(comp_df))
-# head(colMeans(output$mu_cell))
-# head(abs(colMeans(output$mu_cell)-colMeans(comp_df)))
-# tail(sort(abs(colMeans(output$mu_cell)-colMeans(comp_df))))
-# hist(comp_pred_df[,tail(order(abs(colMeans(output$mu_cell_pred)-colMeans(comp_pred_df))),1)])
-# hist(output$mu_cell_pred[,tail(order(abs(colMeans(output$mu_cell_pred)-colMeans(comp_pred_df))),1)])
-# agg_pop_df[tail(order(abs(colMeans(output$mu_cell_pred)-colMeans(comp_pred_df))),10),]
+output_st <- sum_svey_model(fit, agg_pop)
 
 ### model-based weights
-dat %>%
-  left_join(
-    output_st$mean_w_new, by = 'cell_id'
-) %>% mutate(
-  w = w_unit / mean(w_unit),
-  Y_w = w * Y
-) %>% select(cell_id, w, Y_w, Y) -> st_out
+st_out <-
+  dat %>%
+  left_join(output_st$mean_w_new, by = 'cell_id') %>% 
+  mutate(w = w_unit / mean(w_unit),
+         Y_w = w * Y) %>% 
+  select(cell_id, w, Y_w, Y)
+
 output_st$mu_w <- mean(st_out$Y_w)
 output_st$w_unit <- st_out$w
 

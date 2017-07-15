@@ -14,7 +14,7 @@ library(reshape2)
 
 set.seed(20150213)
 
-#----------data simulation-----------------#
+
 data <- read.dta("weighting_code/data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
 SRBIdata <- data[data$sample == "SRBI", ]
 # poorhealth health anyhard hardscl bestlife=qd7 la var bestlife 'Life Satisfaction, 10=best possibl
@@ -195,7 +195,7 @@ stan.data_cell <- list(n = nrow(dat), q = q, J = J, n_cell = n_cell, y_cell = y_
 
 S.compile_cell_4var <- stan_model(file = "weighting_code/stan/mrpweights-4var.stan")
 
-S_4var <- sampling(object = S.compile_cell_4var, data = stan.data_cell, iter = 8000, chains = 4, seed = 1234, cores =4)
+S_4var <- sampling(object = S.compile_cell_4var, data = stan.data_cell, iter = 8000, chains = 4, seed = 1234, cores = 4)
 
 output <- extract(S_4var, permuted = TRUE)
 

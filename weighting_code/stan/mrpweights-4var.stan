@@ -78,7 +78,7 @@ transformed parameters{
   
 
 for (j in 1:J){
-  mu_cell[j] <- alpha + alpha_age[cell_str[J_use[j],1]] * sigma_m * lambda_m[1] + 
+  mu_cell[j] = alpha + alpha_age[cell_str[J_use[j],1]] * sigma_m * lambda_m[1] + 
     alpha_eth[cell_str[J_use[j],2]] * sigma_m * lambda_m[2] + 
     alpha_edu[cell_str[J_use[j],3]] * sigma_m * lambda_m[3] +
     alpha_inc[cell_str[J_use[j],4]] * sigma_m * lambda_m[4] +
@@ -92,7 +92,7 @@ for (j in 1:J){
 }
 
   for (j in 1:J){
-    sigma_y_cell[j] <- sigma_y / sqrt(n_cell[j]);
+    sigma_y_cell[j] = sigma_y / sqrt(n_cell[j]);
   }
 }
        
@@ -110,7 +110,7 @@ model {
   alpha_age_eth_edu ~ normal(0,1);
   alpha_age_eth_inc ~ normal(0,1);
 
-  sigma_m ~ cauchy(0,1); //student_t(3,0,1);
+  sigma_m ~ normal(0,1); //student_t(3,0,1);
   sigma_y ~ cauchy(0,5);
   lambda_inter ~ normal(0,1);
   lambda_m ~ normal(0,1); //student_t(3,0,1);
@@ -130,7 +130,7 @@ generated quantities{
   real theta_pred;
   real theta_sample;
 
-  pri_var <- lambda_m' * lambda_m * pow(sigma_m,2) +
+  pri_var = lambda_m' * lambda_m * pow(sigma_m,2) +
     pow(lambda_inter[1] * lambda_m[1] * lambda_m[2] * sigma_m,2) +
     pow(lambda_inter[1] * lambda_m[1] * lambda_m[3] * sigma_m,2) +
     pow(lambda_inter[1] * lambda_m[2] * lambda_m[3] * sigma_m,2) +
@@ -140,13 +140,13 @@ generated quantities{
     pow(lambda_inter[2] * lambda_m[1] * lambda_m[2] * lambda_m[4] * sigma_m,2);
 
   for (j in 1:J){
-    y_cell_new[j] <- normal_rng(mu_cell[j],sigma_y_cell[j]);
-    ps_w[j] <- pow(sigma_y_cell[j],-2)/(pow(sigma_y_cell[j],-2) + 1/pri_var);
-    w_new[j] <- ps_w[j] * N_cell[j]/sum(N_cell)/n_cell[j]*n + 1-ps_w[j];
+    y_cell_new[j] = normal_rng(mu_cell[j],sigma_y_cell[j]);
+    ps_w[j] = pow(sigma_y_cell[j],-2)/(pow(sigma_y_cell[j],-2) + 1/pri_var);
+    w_new[j] = ps_w[j] * N_cell[j]/sum(N_cell)/n_cell[j]*n + 1-ps_w[j];
   }
 
  for (j in 1:J_true){
-  mu_cell_pred[j] <- alpha + alpha_age[cell_str[J_pop[j],1]] * sigma_m * lambda_m[1] + 
+  mu_cell_pred[j] = alpha + alpha_age[cell_str[J_pop[j],1]] * sigma_m * lambda_m[1] + 
     alpha_eth[cell_str[J_pop[j],2]] * sigma_m * lambda_m[2] + 
     alpha_edu[cell_str[J_pop[j],3]] * sigma_m * lambda_m[3] +
     alpha_inc[cell_str[J_pop[j],4]] * sigma_m * lambda_m[4] +
@@ -158,6 +158,6 @@ generated quantities{
     alpha_age_eth_edu[(cell_str[J_pop[j],3]-1) * J_eth * J_age + (cell_str[J_pop[j],2]-1) * J_age + cell_str[J_pop[j],1]] * lambda_inter[2] * lambda_m[1] * lambda_m[2] * lambda_m[3] * sigma_m +
     alpha_age_eth_inc[(cell_str[J_pop[j],4]-1) * J_eth * J_age + (cell_str[J_pop[j],2]-1) * J_age + cell_str[J_pop[j],1]] * lambda_inter[2] * lambda_m[1] * lambda_m[2] * lambda_m[4] * sigma_m;
   }
- theta_pred <- mu_cell_pred' * N_cell_true / sum(N_cell_true);
- theta_sample <- mu_cell' * N_cell / sum(N_cell);
+ theta_pred = mu_cell_pred' * N_cell_true / sum(N_cell_true);
+ theta_sample = mu_cell' * N_cell / sum(N_cell);
 }
