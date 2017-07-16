@@ -37,6 +37,19 @@ sum_svey_model <- function(object, agg_p) {
   return(ret_list)
 }
 
+sum_weights <- function(weight_df, idx, comp_stat) {
+  sub_weight_df <- weight_df %>% filter(cell_id %in% idx)
+  Y_sub <- sub_weight_df$Y
+  Y_w_sub <- sub_weight_df$Y_w
+  w_sub <- sub_weight_df$w
+  est_wt <- sum(Y_w_sub)/sum(w_sub)
+  bias <- est_wt - comp_stat
+  sd_wt <- sqrt(sum(w_sub^2 * var(Y_sub)))/sum(w_sub)
+  cr_wt <- as.numeric(est_wt - 1.96 * sd_wt <= comp_stat & comp_stat <= est_wt +
+                                        1.96 * sd_wt)
+  return(list(bias = bias, sd_wt = sd_wt, cr_wt = cr_wt, est_wt = est_wt))
+}
+
 # sample data
 data <- read.dta("weighting_code/data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
 SRBIdata <- data %>% filter(sample == "SRBI")
@@ -124,6 +137,7 @@ acs_tab <- svytable(~age_dc + race_dc + educat + opmres_x, acs_ds_ad)
 acs_N <- as.numeric(acs_tab)
 acs_tab_df <- as.data.frame(acs_tab) 
 colnames(acs_tab_df) <- c("age", "eth", "edu", "inc", "N")
+
 agg_pop <- 
   acs_tab_df %>% 
   mutate(
@@ -131,7 +145,7 @@ agg_pop <-
     j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + (as.integer(edu) - 1) * J_eth * J_age + (as.integer(eth) - 1) * J_age + as.integer(age)
     ) %>%
   arrange(j) %>%
-  filter(cell_id != "4431") # cell doesn't exist in ACS data
+  filter(cell_id %in% acs_ad$cell_id) 
 
 ###--------Four variable case: age, race, edu and inc------------###
 
@@ -261,8 +275,12 @@ s.d.rake <- svytable(~edu + age, rake.dat.design)/nrow(dat)
 print(xtable(data.frame(cbind(sqrt(sum((p.d - s.d)^2)), sqrt(sum((p.d - s.d.ps)^2)), sqrt(sum((p.d - s.d.rake)^2)))), 
              digits = 3))
 
-weights <- data.frame(wt = log(c(output_st$w_unit, w_rake_df$w, w_ps_df$w)), 
-                      Method = c(rep("Str-W", nrow(dat)), rep("Rake-W", nrow(dat)), rep("PS-W", nrow(dat)))) %>%
+w_unit <- output_st$w_unit
+w_rake <- w_rake_df$w
+w_ps <- w_ps_df$w
+n <- nrow(dat)
+weights <- data.frame(wt = log(c(w_unit, w_rake, w_ps)), 
+                      Method = c(rep("Str-W", n), rep("Rake-W", n), rep("PS-W", n))) %>%
   mutate(
     Method = factor(Method, levels = c("Str-W", "Rake-W", "PS-W"))
  )
@@ -274,15 +292,10 @@ direct.label(ggplot(weights, aes(x = wt, group = Method)) + geom_density(aes(col
                                                                                                                                                                                                                                  panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background = element_blank()))
 ggsave("plot/weight-lsw.pdf")
 
-weights_s <- cbind(c(w_unit/sum(w_unit), w_rake/sum(w_rake), w_ps/sum(w_ps), rep(1/n, n)), c(rep("Str-W", n), 
-                                                                                             rep("Rake-W", n), rep("PS-W", n), rep("Sample", n)))
-
-weights_y <- data.frame(cbind(weights_s, dat$Y))
-names(weights_y) <- c("w", "Method", "Y")
-weights_y$w <- as.numeric(as.character(weights_y$w))
-weights_y$Y <- as.numeric(as.character(weights_y$Y))
-weights_y$Method <- factor(weights_y$Method, levels = c("Str-W", "Rake-W", "PS-W", "Sample"))
-
+weights_y <- data.frame(w = c(w_unit/sum(w_unit), w_rake/sum(w_rake), w_ps/sum(w_ps), rep(1/n, n)), 
+                        Method = factor(c(rep("Str-W", n), rep("Rake-W", n), rep("PS-W", n), rep("Sample", n)),
+                                        levels = c("Str-W", "Rake-W", "PS-W", "Sample")),
+                        Y = dat$Y)
 
 ggplot(weights_y, aes(x = Y, weights = w, group = Method)) + geom_density(aes(color = Method)) + theme_bw() + 
   scale_x_continuous(name = "Weighted distribution of life satisfaction score in the LSW") + scale_y_continuous(name = "", 
@@ -303,47 +316,45 @@ print(xtable(over_mean_wgt, digits = 3))
 
 ### marginal means sub domain
 l_v <- c(0, J_age, J_eth, J_edu, J_inc)
-est_sub_st <- rep(0, sum(l_v))
-sd_sub_st <- rep(0, sum(l_v))
-est_sub_st_wt <- rep(0, sum(l_v))
-sd_sub_st_wt <- rep(0, sum(l_v))
-est_sub_st_wt2 <- rep(0, sum(l_v))
-sd_sub_st_wt2 <- rep(0, sum(l_v))
-est_sub_ps_wt <- rep(0, sum(l_v))
-sd_sub_ps_wt <- rep(0, sum(l_v))
-est_sub_ips_wt <- rep(0, sum(l_v))
-sd_sub_ips_wt <- rep(0, sum(l_v))
-est_sub_rake_wt <- rep(0, sum(l_v))
-sd_sub_rake_wt <- rep(0, sum(l_v))
-st_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
-iid_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
+est_sub_st <- 
+  sd_sub_st <- 
+  est_sub_st_wt <- 
+  sd_sub_st_wt <- 
+  est_sub_st_wt2 <- 
+  sd_sub_st_wt2 <- 
+  est_sub_ps_wt <- 
+  sd_sub_ps_wt <- 
+  est_sub_ips_wt <- 
+  sd_sub_ips_wt <- 
+  est_sub_rake_wt <- 
+  sd_sub_rake_wt <- rep(0, sum(l_v))
+st_est_sm <- 
+  iid_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
 
+cell_str <- agg_pop[,c('age','eth','edu','inc')]
 for (v in 1:q) {
   for (l in 1:l_v[v + 1]) {
-    cell_index <- (1:J_sup)[cell_str[, v] == l]
-    id_index <- cell_id %in% (1:J_sup)[cell_str[, v] == l]
-    for (s in 1:dim(output$mu_cell_pred)[1]) {
-      st_est_sm[s] <- sum(output$mu_cell_pred[s, J_pop %in% cell_index] * N_cell_true[J_pop %in% cell_index])/sum(N_cell_true[J_pop %in% 
-                                                                                                                                cell_index])
-    }
+    sub_pop_data <- agg_pop[which(cell_str[,v] == l), c('cell_id','N')] 
+    sub_cell_idx <- sub_pop_data$cell_id
+    st_est_sm <- output_st$mu_cell_pred[,sub_cell_idx] %*% (sub_pop_data$N / sum(sub_pop_data$N))
     
     est_sub_st[l + sum(l_v[1:v])] <- mean(st_est_sm)
     sd_sub_st[l + sum(l_v[1:v])] <- sd(st_est_sm)
     
     # model-based weights under st prior
-    est_st_wt <- sum(w_unit[id_index] * dat$Y[id_index])/sum(w_unit[id_index])
-    est_sub_st_wt[l + sum(l_v[1:v])] <- est_st_wt
-    sd_sub_st_wt[l + sum(l_v[1:v])] <- sqrt(sum(w_unit[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit[id_index])
+    w_sum <- sum_weights(weight_df = st_out, idx = sub_cell_idx, comp_stat = 0)
+    est_sub_st_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
+    sd_sub_st_wt[l + sum(l_v[1:v])] <- w_sum$sd_wt
     
     # ps weights
-    est_ps_wt <- sum(w_ps[id_index] * dat$Y[id_index])/sum(w_ps[id_index])
-    est_sub_ps_wt[l + sum(l_v[1:v])] <- est_ps_wt
-    sd_sub_ps_wt[l + sum(l_v[1:v])] <- sqrt(sum(w_ps[id_index]^2 * var(dat$Y[id_index])))/sum(w_ps[id_index])
+    w_sum <- sum_weights(weight_df = w_ps_df, idx = sub_cell_idx, comp_stat = 0)
+    est_sub_ps_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
+    sd_sub_ps_wt[l + sum(l_v[1:v])] <- w_sum$sd_wt
     
     # rake weights
-    est_rake_wt <- sum(w_rake[id_index] * dat$Y[id_index])/sum(w_rake[id_index])
-    est_sub_rake_wt[l + sum(l_v[1:v])] <- est_rake_wt
-    sd_sub_rake_wt[l + sum(l_v[1:v])] <- sqrt(sum(w_rake[id_index]^2 * var(dat$Y[id_index])))/sum(w_rake[id_index])
+    w_sum <- sum_weights(weight_df = w_rake_df, idx = sub_cell_idx, comp_stat = 0)
+    est_sub_rake_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
+    sd_sub_rake_wt[l + sum(l_v[1:v])] <- w_sum$sd_wt
   }
 }
 
@@ -386,37 +397,38 @@ ggsave("plot/lsw_mar_se.pdf")
 ###-----------interaction---------------###
 
 # 170 age>=65 & poverty gap 5 300%+
-cell_index <- (1:J_sup)[cell_str[, 1] == 5 & cell_str[, 4] == 5]
+sub_pop_data <- agg_pop[cell_str[,1] == 5 & cell_str[,4] == 5, c('cell_id','N')] 
+sub_cell_idx_55 <- sub_pop_data$cell_id
 
 # 57 2 Black Non-Hispanic & poverty gap under 50%
-cell_index <- (1:J_sup)[cell_str[, 2] == 2 & cell_str[, 4] == 1]
+sub_pop_data <- agg_pop[cell_str[,2] == 2 & cell_str[,4] == 1, c('cell_id','N')] 
+sub_cell_idx_21 <- sub_pop_data$cell_id
 
 # 222 age 35-64 1 White Non-Hispani 5 300%+ highly educated
 cell_index <- (1:J_sup)[cell_str[, 2] == 1 & cell_str[, 3] == 4 & cell_str[, 4] < 3 & cell_str[, 1] > 1 & cell_str[, 
                                                                                                                    1] < 5]
+sub_pop_data <- agg_pop[cell_str[,2] == 1 & cell_str[,3] == 4 & as.integer(cell_str[,4]) < 3 &
+                        as.integer(cell_str[,1]) > 1 & as.integer(cell_str[,1]) < 5, c('cell_id','N')] 
+sub_cell_idx_143 <- sub_pop_data$cell_id
 
-id_index <- cell_id %in% cell_index
-for (s in 1:dim(output$mu_cell_pred)[1]) {
-  st_est_sm[s] <- sum(output$mu_cell_pred[s, J_pop %in% cell_index] * N_cell_true[J_pop %in% cell_index])/sum(N_cell_true[J_pop %in% 
-                                                                                                                            cell_index])
-}
+st_est_sm <- output_st$mu_cell_pred[,sub_cell_idx_143] %*% (sub_pop_data$N / sum(sub_pop_data$N))
 est_sub_st_int <- mean(st_est_sm)
 sd_sub_st_int <- sd(st_est_sm)
 
 # model-based weights under st prior
-est_st_wt <- sum(w_unit[id_index] * dat$Y[id_index])/sum(w_unit[id_index])
-est_sub_st_wt_int <- est_st_wt
-sd_sub_st_wt_int <- sqrt(sum(w_unit[id_index]^2 * var(dat$Y[id_index])))/sum(w_unit[id_index])
+w_sum <- sum_weights(weight_df = st_out, idx = sub_cell_idx_143, comp_stat = 0)
+est_sub_st_wt_int <- w_sum$est_wt
+sd_sub_st_wt_int <- w_sum$sd_wt
 
 # ps weights
-est_ps_wt <- sum(w_ps[id_index] * dat$Y[id_index])/sum(w_ps[id_index])
-est_sub_ps_wt_int <- est_ps_wt
-sd_sub_ps_wt_int <- sqrt(sum(w_ps[id_index]^2 * var(dat$Y[id_index])))/sum(w_ps[id_index])
+w_sum <- sum_weights(weight_df = w_ps_df, idx = sub_cell_idx_143, comp_stat = 0)
+est_sub_ps_wt_int <- w_sum$est_wt
+sd_sub_ps_wt_int <- w_sum$sd_wt
 
 # rake weights
-est_rake_wt <- sum(w_rake[id_index] * dat$Y[id_index])/sum(w_rake[id_index])
-est_sub_rake_wt_int <- est_rake_wt
-sd_sub_rake_wt_int <- sqrt(sum(w_rake[id_index]^2 * var(dat$Y[id_index])))/sum(w_rake[id_index])
+w_sum <- sum_weights(weight_df = w_rake_df, idx = sub_cell_idx_143, comp_stat = 0)
+est_sub_rake_wt_int <- w_sum$est_wt 
+sd_sub_rake_wt_int <- w_sum$sd_wt
 
 int_wgt_mean <- data.frame(cbind(c(est_sub_st_int, sd_sub_st_int), c(est_sub_st_wt_int, sd_sub_st_wt_int), c(est_sub_rake_wt_int, 
                                                                                                              sd_sub_rake_wt_int), c(est_sub_ps_wt_int, sd_sub_ps_wt_int)))
