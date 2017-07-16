@@ -4,3 +4,4 @@ literature/
 output/
 plot/
 stan/*.rda
+.DS_Store
