@@ -14,18 +14,16 @@ pri_var <- function(object) {
 # Compute shrinkage factor for each post-stratification cell
 # 
 # @param object stanreg object (fitted rstanarm model)
-# @param cell_table A data frame with columns "N" (population cell counts) 
-#   and "n" (sample cell counts).
+# @param ns A vector of "n" (sample cell counts).
 # @return A matrix with number of rows equal to the number of posterior draws 
 #   and number of columns equal to the number of cells, i.e. nrow(cell_table).
 #
-shrinkage_factor <- function(object, cell_table) {
+shrinkage_factor <- function(object, ns) {
   var_draws <- pri_var(object)
   inv_sigma_theta_sq <- 1 / var_draws$sigma_theta_sq
   sigma_y_sq <- var_draws$sigma_y_sq
   
-  ns <- cell_table[["n"]]  # sample cell counts
-  J <- nrow(cell_table)
+  J <- length(ns)
   
   ps_w <- matrix(NA, nrow = length(sigma_y_sq), ncol = J)
   for (j in 1:J) {
