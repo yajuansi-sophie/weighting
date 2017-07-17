@@ -1,7 +1,6 @@
 library(rstanarm) # requires structured_prior_merge branch
 library(survey)
 library(dplyr)
-library(foreign)
 
 set.seed(20150213)
 
@@ -93,7 +92,7 @@ agg_pop <-
   ) %>%
   ungroup()
 
-R <- 3
+R <- 2
 n_r <-
   bias_mu_pred <-
   sd_mu_pred <-
@@ -252,12 +251,12 @@ for (r in 1:R) {
     dat %>%
     left_join(output$mean_w_new, by = 'cell_id') %>% 
     mutate(
-      w_unit = w_unit / mean(w_unit),
-      Y_w = w_unit * Y
+      w = w_unit / mean(w_unit),
+      Y_w = w * Y
     ) %>% 
-    select(cell_id, w_unit, Y_w, Y)
+    select(cell_id, w, Y_w, Y)
   output$mu_w <- mean(st_out$Y_w)
-  output$w_unit <- st_out$w_unit
+  output$w_unit <- st_out$w
   
   # prediction also using empty cells
   check_interval <- function(x, val) {
@@ -308,7 +307,7 @@ for (r in 1:R) {
   ###-----------------STAN with independent prior--------------------------###
   
   
-  S1 <-
+  S_iid <-
     stan_glmer(
       formula = ff,
       data = dat_rstanarm,
@@ -324,17 +323,17 @@ for (r in 1:R) {
       prior_aux = cauchy(0, 5), 
       adapt_delta = 0.99
     )
-  output_iid <- sum_svey_model(object = S1, agg_pop = agg_pop)
+  output_iid <- sum_svey_model(object = S_iid, agg_pop = agg_pop)
   st_iid <- 
     dat %>%
     left_join(output_iid$mean_w_new, by = 'cell_id') %>% 
     mutate(
-      w_unit = w_unit / mean(w_unit),
-      Y_w = w_unit * Y
+      w = w_unit / mean(w_unit),
+      Y_w = w * Y
     ) %>% 
-    select(cell_id, w_unit, Y_w, Y)
+    select(cell_id, w, Y_w, Y)
   output_iid$mu_w <- mean(st_iid$Y_w)
-  output_iid$w_unit <- st_iid$w_unit
+  output_iid$w_unit <- st_iid$w
  
   ###-------------------------------------###
   
@@ -387,10 +386,11 @@ for (r in 1:R) {
     left_join(dat_rstanarm[,c('cell_id','n')], by = 'cell_id') %>%
     mutate(
       w_ps = N / n,
-      w_ps = w_ps / mean(w_ps),
-      Y_w = w_ps * Y
-    )
-  w_ps <- w_ps_df %>% .$w_ps
+      w = w_ps / mean(w_ps),
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
+  w_ps <- w_ps_df %>% .$w
   wght_sd_rt_ps[r,] <- c(sd(w_ps), max(w_ps) / min(w_ps))
 
   w_sum <- sum_weights(weight_df = w_ps_df, idx = w_ps_df$cell_id, comp_stat = mean(y))
@@ -404,9 +404,10 @@ for (r in 1:R) {
     dat %>% 
     select(Y, cell_id) %>%
     mutate(
-      w_ips = w_ips, 
-      Y_w = w_ips * Y
-    )
+      w = w_ips, 
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
 
   wght_sd_rt_ips[r, ] <- c(sd(w_ips), max(w_ips)/min(w_ips))
   w_sum <- sum_weights(weight_df = w_ips_df, idx = w_ips_df$cell_id, comp_stat = mean(y))
@@ -430,9 +431,10 @@ for (r in 1:R) {
     dat %>%
     select(Y, cell_id) %>% 
     mutate(
-      w_rake = w_rake, 
-      Y_w = w_rake * Y
-    )
+      w = w_rake, 
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
 
   wght_sd_rt_rake[r, ] <- c(sd(w_rake), max(w_rake)/min(w_rake))
   w_sum <- sum_weights(weight_df = w_rake_df, idx = w_rake_df$cell_id, comp_stat = mean(y))

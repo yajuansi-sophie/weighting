@@ -199,7 +199,7 @@ dat <-
     inc, eld, cld, ps, j 
   ) %>%
   mutate(
-    Y = y[I], 
+    Y = Y[I], 
     cell_id = pop_cell_id[I]
   )
 
@@ -236,9 +236,9 @@ S_st <-
 stan_glmer(
   formula = ff,
   data = dat_rstanarm,
-  iter = 500,
-  chains = 4,
-  cores = 4,
+  iter = 50,
+  chains = 1,
+  cores = 1,
   prior_covariance = 
     mrp_structured(
       cell_size = dat_rstanarm$n, 
@@ -249,7 +249,7 @@ stan_glmer(
   seed = 123,
   prior_aux = cauchy(0, 5),
   prior_intercept = normal(0, 100, autoscale = FALSE),
-  adapt_delta = 0.99
+  adapt_delta = 0.80
 )
 
 output_st <- sum_svey_model(S_st, agg_pop)
@@ -260,9 +260,9 @@ S_iid <-
 stan_glmer(
   formula = ff,
   data = dat_rstanarm,
-  iter = 500,
-  chains = 4,
-  cores = 4,
+  iter = 50,
+  chains = 1,
+  cores = 1,
   prior_covariance = 
     mrp_structured(
       indep = TRUE,
@@ -272,7 +272,7 @@ stan_glmer(
   seed = 123,
   prior_aux = cauchy(0, 5),
   prior_intercept = normal(0, 100, autoscale = FALSE),
-  adapt_delta = 0.99
+  adapt_delta = 0.8
 )
 
 output_iid <- sum_svey_model(S_iid, agg_pop)
@@ -284,13 +284,13 @@ st_out <-
     output_st$mean_w_new, by = 'cell_id'
   ) %>%
   mutate(
-    w_unit = w_unit / mean(w_unit),
-    Y_w = w_unit * Y
+    w = w_unit / mean(w_unit),
+    Y_w = w * Y
   ) %>%
-  select(cell_id, w_unit, Y_w, Y)
+  select(cell_id, w, Y_w, Y)
 
 output_st$mu_w <- mean(st_out$Y_w)
-output_st$w_unit <- st_out$w_unit
+output_st$w_unit <- st_out$w
 
 st.dat.design <- svydesign(id = ~1, data = dat, weights = output_st$w)
 # svymean(~Y, st.dat.design)
@@ -301,13 +301,13 @@ iid_out <-
     output_iid$mean_w_new, by = 'cell_id'
   ) %>%
   mutate(
-    w_unit = w_unit / mean(w_unit),
+    w = w_unit / mean(w_unit),
     Y_w = w * Y
   ) %>%
-  select(cell_id, w_unit, Y_w, Y)
+  select(cell_id, w, Y_w, Y)
 
 output_iid$mu_w <- mean(iid_out$Y_w)
-output_iid$w_unit <- iid_out$w_unit
+output_iid$w_unit <- iid_out$w
 
 id.dat.design <- svydesign(id = ~1, data = dat, weights = output_iid$w_unit)
 
@@ -410,8 +410,7 @@ bias_sub_st <-
   bias_sub_ips_wt <- 
   sd_sub_ips_wt <- 
   bias_sub_rake_wt <- 
-  sd_sub_rake_wt <- matrix(0, R, sum(l_v))
-
+  sd_sub_rake_wt <- rep(0, sum(l_v))
 
 cell_str <- agg_pop[,c('age','eth','edu','sex','inc','eld','cld','ps')]
 for (v in 1:q) {
