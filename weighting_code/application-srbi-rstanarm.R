@@ -184,8 +184,12 @@ fit <-
     chains = 4,
     cores = 4,
     prior_covariance = 
-      rstanarm::mrp_structured(cell_size = dat_rstanarm$n, 
-                               cell_sd = dat_rstanarm$sd_cell),
+      rstanarm::mrp_structured(
+        cell_size = dat_rstanarm$n, 
+        cell_sd = dat_rstanarm$sd_cell, 
+        group_level_scale = 1,
+        group_level_df = 7
+      ),
     seed = 123,
     prior_aux = cauchy(0, 5),
     prior_intercept = normal(0, 100, autoscale = FALSE), 
@@ -357,7 +361,6 @@ est_sub_st <-
   sd_sub_ips_wt <- 
   est_sub_rake_wt <- 
   sd_sub_rake_wt <- rep(0, sum(l_v))
-# st_est_sm <- rep(0, dim(output$mu_cell_pred)[1])
 
 cell_str <- agg_pop[, c('age','eth','edu','inc')]
 for (v in 1:ncol(cell_str)) {
