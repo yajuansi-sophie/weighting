@@ -299,8 +299,12 @@ for (r in 1:R) {
       chains = 4,
       cores = 4,
       prior_covariance = 
-        mrp_structured(cell_size = dat_rstanarm$n, 
-                       cell_sd = dat_rstanarm$sd_cell),
+        mrp_structured(
+          cell_size = dat_rstanarm$n, 
+          cell_sd = dat_rstanarm$sd_cell,
+          group_level_scale = 1, 
+          group_level_df = 1
+        ),
       seed = 123,
       prior_aux = cauchy(0, 5),
       prior_intercept = normal(0, 100, autoscale = FALSE)
