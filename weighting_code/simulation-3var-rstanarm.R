@@ -609,3 +609,212 @@ for (r in 1:R) {
   cr_sub_rake_wt_int[r] <- w_sum$cr_wt
      
 }  #end of repeated sampling
+
+
+
+
+
+###------------plots------------### 
+over_pred_mean <-
+  data.frame(cbind(
+    c(
+      mean(bias_mu_pred),
+      sqrt(mean(bias_mu_pred ^ 2)),
+      mean(sd_mu_pred),
+      mean(cr_mu_pred)
+    ),
+  c(
+    mean(bias_mu_pred_iid),
+    sqrt(mean(bias_mu_pred_iid ^ 2)),
+    mean(sd_mu_pred_iid),
+    mean(cr_mu_pred_iid)
+  )))
+
+
+over_wgt_mean <-
+  data.frame(cbind(
+    c(mean(bias_mu_st), sqrt(mean(bias_mu_st ^ 2)), mean(sd_mu_st), mean(cr_mu_st)),
+    c(mean(bias_mu_id), sqrt(mean(bias_mu_id ^ 2)), mean(sd_mu_id), mean(cr_mu_id)),
+    c(mean(bias_mu_ps), sqrt(mean(bias_mu_ps ^ 2)),mean(sd_mu_ps), mean(cr_mu_ps)),
+    c(mean(bias_mu_rake), sqrt(mean(bias_mu_rake ^ 2)), mean(sd_mu_rake), mean(cr_mu_rake)),
+    c(mean(bias_mu_ips), sqrt(mean(bias_mu_ips ^ 2)), mean(sd_mu_ips), mean(cr_mu_ips))
+  ))
+
+mar_pred_mean <-
+  data.frame(cbind(
+    c(
+      apply(bias_sub_st, 2, mean),
+      sqrt(apply(bias_sub_st ^ 2, 2, mean)),
+      apply(sd_sub_st, 2, mean),
+      apply(cr_sub_st, 2, mean)
+    ),
+    c(
+      apply(bias_sub_iid, 2, mean),
+      sqrt(apply(bias_sub_iid ^ 2, 2, mean)),
+      apply(sd_sub_iid, 2, mean),
+      apply(cr_sub_iid, 2, mean)
+    )
+  ))
+mar_wgt_mean <-
+  data.frame(cbind(
+    c(
+      apply(bias_sub_st_wt, 2, mean),
+      sqrt(apply(bias_sub_st_wt ^ 2, 2, mean)),
+      apply(sd_sub_st_wt, 2, mean),
+      apply(cr_sub_st_wt, 2, mean)
+    ),
+    c(
+      apply(bias_sub_iid_wt, 2, mean),
+      sqrt(apply(bias_sub_iid_wt ^ 2, 2, mean)),
+      apply(sd_sub_iid_wt, 2, mean),
+      apply(cr_sub_iid_wt, 2, mean)
+    ),
+    c(
+      apply(bias_sub_ps_wt, 2, mean),
+      sqrt(apply(bias_sub_ps_wt ^ 2, 2, mean)),
+      apply(sd_sub_ps_wt, 2, mean),
+      apply(cr_sub_ps_wt, 2, mean)
+    ),
+    c(
+      apply(bias_sub_rake_wt, 2, mean),
+      sqrt(apply(bias_sub_rake_wt ^ 2, 2, mean)),
+      apply(sd_sub_rake_wt, 2, mean),
+      apply(cr_sub_rake_wt, 2, mean)
+    ),
+    c(
+      apply(bias_sub_ips_wt, 2, mean),
+      sqrt(apply(bias_sub_ips_wt ^ 2, 2, mean)),
+      apply(sd_sub_ips_wt, 2, mean),
+      apply(cr_sub_ips_wt, 2, mean)
+    )
+  ))
+int_pred_mean <-
+  data.frame(cbind(c(
+    mean(bias_sub_st_int),
+    sqrt(mean(bias_sub_st_int ^ 2)),
+    mean(sd_sub_st_int),
+    mean(cr_sub_st_int)
+  ), c(
+    mean(bias_sub_iid_int),
+    sqrt(mean(bias_sub_iid_int ^ 2)),
+    mean(sd_sub_iid_int),
+    mean(cr_sub_iid_int)
+  )))
+int_wgt_mean <-
+  data.frame(cbind(
+    c(
+      mean(bias_sub_st_wt_int),
+      sqrt(mean(bias_sub_st_wt_int ^ 2)),
+      mean(sd_sub_st_wt_int),
+      mean(cr_sub_st_wt_int)
+    ),
+    c(
+      mean(bias_sub_iid_wt_int),
+      sqrt(mean(bias_sub_iid_wt_int ^ 2)),
+      mean(sd_sub_iid_wt_int),
+      mean(cr_sub_iid_wt_int)
+    ),
+    c(
+      mean(bias_sub_ps_wt_int),
+      sqrt(mean(bias_sub_ps_wt_int ^ 2)),
+      mean(sd_sub_ps_wt_int),
+      mean(cr_sub_ps_wt_int)
+    ),
+    c(
+      mean(bias_sub_rake_wt_int),
+      sqrt(mean(bias_sub_rake_wt_int ^ 2)),
+      mean(sd_sub_rake_wt_int),
+      mean(cr_sub_rake_wt_int)
+    ),
+    c(
+      mean(bias_sub_ips_wt_int),
+      sqrt(mean(bias_sub_ips_wt_int ^ 2)),
+      mean(sd_sub_ips_wt_int),
+      mean(cr_sub_ips_wt_int)
+    )
+  ))
+
+### bias
+bias_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                               "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                               ">=col"), rbind(c(abs(over_pred_mean[1, ]), abs(over_wgt_mean[1, ])), c(abs(int_pred_mean[1, ]), abs(int_wgt_mean[1, ])), cbind(abs(mar_pred_mean[1:sum(l_v), ]), abs(mar_wgt_mean[1:sum(l_v), ])))))
+colnames(bias_out) <- c("Quantity", "Str-P", "Ind-P", "Str-W", "Ind-W", "PS-W", "Rake-W", "IP-W")
+bias_out$Quantity <- factor(bias_out$Quantity, levels = c("age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                                                          "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                                                          ">=col", "non-white young", "overall"))
+bias_out.m <- melt(bias_out)
+
+
+
+### rmse
+rmse_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                               "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                               ">=col"), rbind(c(over_pred_mean[2, ], over_wgt_mean[2, ]), c(int_pred_mean[2, ], int_wgt_mean[2, ]), cbind(mar_pred_mean[sum(l_v) + 
+                                                                                                                                                           1:sum(l_v), ], mar_wgt_mean[sum(l_v) + 1:sum(l_v), ]))))
+
+colnames(rmse_out) <- c("Quantity", "Str-P", "Ind-P", "Str-W", "Ind-W", "PS-W", "Rake-W", "IP-W")
+rmse_out$Quantity <- factor(rmse_out$Quantity, levels = c("age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                                                          "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                                                          ">=col", "non-white young", "overall"))
+rmse_out.m <- melt(rmse_out)
+
+
+
+
+
+### se
+se_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                             "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                             ">=col"), rbind(c(over_pred_mean[3, ], over_wgt_mean[3, ]), c(int_pred_mean[3, ], int_wgt_mean[3, ]), cbind(mar_pred_mean[2 * 
+                                                                                                                                                         sum(l_v) + 1:sum(l_v), ], mar_wgt_mean[2 * sum(l_v) + 1:sum(l_v), ]))))
+
+colnames(se_out) <- c("Quantity", "Str-P", "Ind-P", "Str-W", "Ind-W", "PS-W", "Rake-W", "IP-W")
+se_out$Quantity <- factor(se_out$Quantity, levels = c("age:18-34", "age:35-44", "age:45-54", "age:55-64", "age:65+", 
+                                                      "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", ">=col", 
+                                                      "non-white young", "overall"))
+se_out.m <- melt(se_out)
+
+
+# coverage
+cr_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+                             "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+                             ">=col"), rbind(c(over_pred_mean[4, ], over_wgt_mean[4, ]), c(int_pred_mean[4, ], int_wgt_mean[4, ]), cbind(mar_pred_mean[3 * 
+                                                                                                                                                         sum(l_v) + 1:sum(l_v), ], mar_wgt_mean[3 * sum(l_v) + 1:sum(l_v), ]))))
+
+colnames(cr_out) <- c("Quantity", "Str-P", "Ind-P", "Str-W", "Ind-W", "PS-W", "Rake-W", "IP-W")
+cr_out$Quantity <- factor(cr_out$Quantity, levels = c("age:18-34", "age:35-44", "age:45-54", "age:55-64", "age:65+", 
+                                                      "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", ">=col", 
+                                                      "non-white young", "overall"))
+cr_out.m <- melt(cr_out)
+
+
+
+ggplot(bias_out.m, aes(variable, Quantity)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(name = "abs(Bias)", low = "white", high = "steelblue") +
+  labs(x = "", y = "") +
+  bayesplot::theme_default()
+ggsave("weighting_code/plots/var3_bias_case1.pdf", width = 6)
+
+ggplot(rmse_out.m, aes(variable, Quantity)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(name = "RMSE", low = "white", high = "steelblue") +
+  labs(x = "", y = "") +
+  bayesplot::theme_default()
+ggsave("weighting_code/plots/var3_rmse_case1.pdf", width = 6)
+
+ggplot(se_out.m, aes(variable, Quantity)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(name = "Avg. SD", low = "white", high = "steelblue") +
+  labs(x = "", y = "") +
+  bayesplot::theme_default()
+ggsave("weighting_code/plots/var3_se_case1.pdf", width = 6)
+
+
+ggplot(cr_out.m, aes(variable, Quantity)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(name = "Coverage", low = "steelblue", high = "white") +
+  labs(x = "", y = "") +
+  bayesplot::theme_default()
+ggsave("weighting_code/plots/var3_cr_case1.pdf", width = 6)
+
