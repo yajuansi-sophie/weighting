@@ -307,7 +307,8 @@ for (r in 1:R) {
         ),
       seed = 123,
       prior_aux = cauchy(0, 5),
-      prior_intercept = normal(0, 100, autoscale = FALSE)
+      prior_intercept = normal(0, 100, autoscale = FALSE),
+      adapt_delta = 0.99
     )
   output <- sum_svey_model(S_arm, agg_pop)
   st_out <- 
@@ -383,7 +384,8 @@ for (r in 1:R) {
         cell_size = dat_rstanarm$n,
         cell_sd = dat_rstanarm$sd_cell
       ),
-      prior_aux = cauchy(0, 5)
+      prior_aux = cauchy(0, 5), 
+      adapt_delta = 0.99
     )
   output_iid <- sum_svey_model(object = S1, agg_pop = agg_pop)
   st_iid <- 
