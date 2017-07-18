@@ -441,11 +441,7 @@ se_out.m <- melt(se_out, id.vars = "quantity")
   bayesplot::theme_default() + 
   theme(
     axis.line = element_line(colour = "black"),
-    axis.text = element_text(size = 12),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_blank()
+    axis.text = element_text(size = 12)
   )
 )
 ggsave("weighting_code/plots/lsw_mar_est.pdf", width = 5)
@@ -461,11 +457,7 @@ ggsave("weighting_code/plots/lsw_mar_est.pdf", width = 5)
     bayesplot::theme_default() + 
     theme(
       axis.line = element_line(colour = "black"),
-      axis.text = element_text(size = 12),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      panel.border = element_blank(),
-      panel.background = element_blank()
+      axis.text = element_text(size = 12)
     )
 )
 ggsave("weighting_code/plots/lsw_mar_se.pdf", width = 5)
