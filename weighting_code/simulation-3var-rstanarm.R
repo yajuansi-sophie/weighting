@@ -1,6 +1,7 @@
 library(rstanarm) # requires structured_prior_merge branch
 library(survey)
 library(dplyr)
+library(ggplot2)
 
 set.seed(20150213)
 
