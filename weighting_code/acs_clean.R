@@ -35,7 +35,7 @@ acs_ad <-
     ps = as.factor(ps)
   ) %>%
   mutate_at(
-    .vars = vars(age, eth, edu, sex,
-                 inc, eld, cld, ps),
+    .cols = vars(age, eth, edu, sex, inc, eld, cld, ps),
     .funs = funs(int = as.integer(.))
-  ) %>% saveRDS('weighting_code/data/acs_ad.RDS')
+  ) %>% 
+  saveRDS('weighting_code/data/acs_ad.RDS')
