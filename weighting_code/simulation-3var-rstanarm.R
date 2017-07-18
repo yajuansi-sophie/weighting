@@ -93,7 +93,7 @@ agg_pop <-
   ) %>%
   ungroup()
 
-R <- 2
+R <- 3 # number of repeats
 n_r <-
   bias_mu_pred <-
   sd_mu_pred <-
@@ -196,6 +196,7 @@ ff <- as.formula(Y ~ 1 + (1 | age) + (1 | eth) + (1 | edu) +
                    (1 | age:eth) + (1 | eth:edu) + (1 | age:edu) + 
                    (1 | age:edu:eth))
 
+# repeated sampling
 for (r in 1:R) {
   set.seed(20150213 + r)
   
@@ -305,9 +306,9 @@ for (r in 1:R) {
   sd_mu_st[r] <- w_sum$sd_wt
   cr_mu_st[r] <- w_sum$cr_wt
   
+  
   ###-----------------STAN with independent prior--------------------------###
-  
-  
+
   S_iid <-
     stan_glmer(
       formula = ff,
@@ -369,8 +370,7 @@ for (r in 1:R) {
   cr_mu_cell_iid[r, colnames(output_iid$mu_cell)] <-
     as.numeric(
       apply(output_iid$mu_cell, 2, quantile, 0.025) <= dat_rstanarm$Y &
-        dat_rstanarm$Y <=
-        apply(output_iid$mu_cell, 2, quantile, 0.975)
+        dat_rstanarm$Y <= apply(output_iid$mu_cell, 2, quantile, 0.975)
     )
   
   ### weights
