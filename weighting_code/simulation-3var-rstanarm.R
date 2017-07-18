@@ -1,77 +1,13 @@
 library(rstanarm) # requires structured_prior_merge branch
 library(survey)
 library(dplyr)
-library(foreign)
 
 set.seed(20150213)
 
-source('weighting_code/cell_weights.R')
+source('weighting_code/helper_functions.R')
 
-#' @param object rstanarm fit
-#' @param agg_pop poststrat frame
-sum_svey_model <- function(object, agg_pop) {
-  model_data <- object$data
-  cell_table <- model_data[, c('N', 'n')]
-  ret_list <-
-    list(
-      mu_cell = rstanarm::posterior_linpred(object, newdata = model_data),
-      mu_cell_pred = rstanarm::posterior_linpred(object, newdata = agg_pop),
-      w_new = model_based_cell_weights(object, cell_table)
-    )
-  colnames(ret_list$mu_cell_pred) <- agg_pop$cell_id
-  colnames(ret_list$mu_cell) <- model_data$cell_id
-  
-  ret_list$theta_sample <-
-    ret_list$mu_cell %*% (cell_table$N / sum(cell_table$N))
-  ret_list$theta_pred <-
-    ret_list$mu_cell_pred %*% (agg_pop$N / sum(agg_pop$N))
-  ret_list$mean_w_new <-
-    data.frame(w_unit = colMeans(ret_list$w_new),
-               cell_id = model_data$cell_id)
-  
-  return(ret_list)
-}
-
-sum_weights <- function(weight_df, idx, comp_stat) {
-  sub_weight_df <- weight_df %>% filter(cell_id %in% idx)
-  Y_sub <- sub_weight_df$Y
-  Y_w_sub <- sub_weight_df$Y_w
-  w_sub <- sub_weight_df$w
-  est_wt <- sum(Y_w_sub) / sum(w_sub)
-  bias <- est_wt - comp_stat
-  sd_wt <- sqrt(sum(w_sub ^ 2 * var(Y_sub))) / sum(w_sub)
-  cr_wt <- as.numeric(est_wt - 1.96 * sd_wt <= comp_stat & comp_stat <= est_wt + 1.96 * sd_wt)
-  return(list(
-    bias = bias,
-    sd_wt = sd_wt,
-    cr_wt = cr_wt
-  ))
-}
-
-# load and clean population data
-acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", 
-                    convert.factors = FALSE)
-acs_ad <- 
-  acs_pop %>% 
-  filter(age >= 18) %>%
-  mutate(
-    age = 
-      cut(age, 
-          breaks = c(0,34,44,54,64,Inf), 
-          right = TRUE, 
-          labels = FALSE),
-    age = as.factor(age),
-    eth = as.factor(racex),
-    edu = as.factor(educat),
-    opmres_x = 
-      cut(poverty, 
-          breaks = c(0,50,100,200,300,Inf), 
-          right = TRUE, 
-          labels = FALSE),
-    eldx = if_else(eldx > 1, 3, eldx + 1),
-    childx = if_else(childx > 2, 4, childx + 1),
-    personx = if_else(personx > 4, 4, personx)
-  )
+# load clean population data
+acs_ad <- readRDS('weighting_code/data/acs_ad.RDS')
 
 q <- 3  # number of weighting variables
 
@@ -156,7 +92,7 @@ agg_pop <-
   ) %>%
   ungroup()
 
-R <- 3
+R <- 2
 n_r <-
   bias_mu_pred <-
   sd_mu_pred <-
@@ -315,12 +251,12 @@ for (r in 1:R) {
     dat %>%
     left_join(output$mean_w_new, by = 'cell_id') %>% 
     mutate(
-      w_unit = w_unit / mean(w_unit),
-      Y_w = w_unit * Y
+      w = w_unit / mean(w_unit),
+      Y_w = w * Y
     ) %>% 
-    select(cell_id, w_unit, Y_w, Y)
+    select(cell_id, w, Y_w, Y)
   output$mu_w <- mean(st_out$Y_w)
-  output$w_unit <- st_out$w_unit
+  output$w_unit <- st_out$w
   
   # prediction also using empty cells
   check_interval <- function(x, val) {
@@ -371,7 +307,7 @@ for (r in 1:R) {
   ###-----------------STAN with independent prior--------------------------###
   
   
-  S1 <-
+  S_iid <-
     stan_glmer(
       formula = ff,
       data = dat_rstanarm,
@@ -387,17 +323,17 @@ for (r in 1:R) {
       prior_aux = cauchy(0, 5), 
       adapt_delta = 0.99
     )
-  output_iid <- sum_svey_model(object = S1, agg_pop = agg_pop)
+  output_iid <- sum_svey_model(object = S_iid, agg_pop = agg_pop)
   st_iid <- 
     dat %>%
     left_join(output_iid$mean_w_new, by = 'cell_id') %>% 
     mutate(
-      w_unit = w_unit / mean(w_unit),
-      Y_w = w_unit * Y
+      w = w_unit / mean(w_unit),
+      Y_w = w * Y
     ) %>% 
-    select(cell_id, w_unit, Y_w, Y)
+    select(cell_id, w, Y_w, Y)
   output_iid$mu_w <- mean(st_iid$Y_w)
-  output_iid$w_unit <- st_iid$w_unit
+  output_iid$w_unit <- st_iid$w
  
   ###-------------------------------------###
   
@@ -450,10 +386,11 @@ for (r in 1:R) {
     left_join(dat_rstanarm[,c('cell_id','n')], by = 'cell_id') %>%
     mutate(
       w_ps = N / n,
-      w_ps = w_ps / mean(w_ps),
-      Y_w = w_ps * Y
-    )
-  w_ps <- w_ps_df %>% .$w_ps
+      w = w_ps / mean(w_ps),
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
+  w_ps <- w_ps_df %>% .$w
   wght_sd_rt_ps[r,] <- c(sd(w_ps), max(w_ps) / min(w_ps))
 
   w_sum <- sum_weights(weight_df = w_ps_df, idx = w_ps_df$cell_id, comp_stat = mean(y))
@@ -467,9 +404,10 @@ for (r in 1:R) {
     dat %>% 
     select(Y, cell_id) %>%
     mutate(
-      w_ips = w_ips, 
-      Y_w = w_ips * Y
-    )
+      w = w_ips, 
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
 
   wght_sd_rt_ips[r, ] <- c(sd(w_ips), max(w_ips)/min(w_ips))
   w_sum <- sum_weights(weight_df = w_ips_df, idx = w_ips_df$cell_id, comp_stat = mean(y))
@@ -493,9 +431,10 @@ for (r in 1:R) {
     dat %>%
     select(Y, cell_id) %>% 
     mutate(
-      w_rake = w_rake, 
-      Y_w = w_rake * Y
-    )
+      w = w_rake, 
+      Y_w = w * Y
+    ) %>%
+    select(cell_id, w, Y_w, Y)
 
   wght_sd_rt_rake[r, ] <- c(sd(w_rake), max(w_rake)/min(w_rake))
   w_sum <- sum_weights(weight_df = w_rake_df, idx = w_rake_df$cell_id, comp_stat = mean(y))
