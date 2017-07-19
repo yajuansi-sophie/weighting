@@ -234,6 +234,9 @@ w_rake <- w_rake_df$w
 w_ps <- w_ps_df$w
 n <- nrow(dat)
 
+
+theme_set(bayesplot::theme_default(base_family = "sans"))
+
 # log-weights distributions
 log_weights_plot <- 
   data.frame(
@@ -246,7 +249,6 @@ log_weights_plot <-
   scale_x_continuous(name = "Distributions of log(weights) in the LSW") + 
   scale_y_continuous(name = "",limits = c(0, 1.6)) + 
   coord_cartesian(expand = FALSE) +
-  bayesplot::theme_default() +
   theme(axis.line.y = element_blank())+
   bayesplot::xaxis_text(size = 14) +
   bayesplot::xaxis_title(size = 16) +
@@ -275,7 +277,6 @@ data.frame(
   labs(x = "Weighted distribution of life satisfaction score in the LSW", y = NULL) +
   scale_y_continuous(expand = c(0, 0))+
   #coord_cartesian(expand = FALSE) +
-  bayesplot::theme_default() + 
   theme(axis.line.y = element_blank(),axis.ticks = element_blank(),legend.position = c(0.2,0.75))+
   bayesplot::xaxis_text(size = 14) +
   bayesplot::xaxis_title(size = 16) +
@@ -405,7 +406,6 @@ se_out.m <- melt(se_out, id.vars = "quantity")
   geom_tile(aes(fill = value), colour = "white") + 
   scale_fill_gradient(name = "Est", low = "white", high = "slategrey") + 
   labs(x = "", y = "") +coord_cartesian(expand = FALSE) + 
-  bayesplot::theme_default() + 
   theme(
     axis.line = element_line(colour = "black"),
     axis.text = element_text(size = 12)
@@ -418,8 +418,8 @@ ggsave("plot/lsw_mar_est.pdf", width = 5)
     ggplot(se_out.m, aes(variable, quantity)) +
     geom_tile(aes(fill = value), colour = "white") +
     scale_fill_gradient(name = "SE", low = "white", high = "steelblue") +
-    labs(x = "", y = "") +coord_cartesian(expand = FALSE) +
-    bayesplot::theme_default() + 
+    labs(x = "", y = "") +
+    coord_cartesian(expand = FALSE) +
     theme(
       axis.line = element_line(colour = "black"),
       axis.text = element_text(size = 12)

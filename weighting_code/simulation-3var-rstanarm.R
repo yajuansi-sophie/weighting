@@ -659,13 +659,13 @@ plotdata <- data.frame(
   )
 )
 
+theme_set(bayesplot::theme_default(base_family = "sans"))
 plotdata %>% 
   filter(est == "bias") %>%
   ggplot(aes(method, quant)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "abs(Bias)", low = "white", high = "steelblue") +
-  labs(x = "", y = "") +
-  bayesplot::theme_default()
+  labs(x = "", y = "")
 ggsave("weighting_code/plots/var3_bias_case1.pdf", width = 6)
 
 plotdata %>% 
@@ -673,8 +673,7 @@ plotdata %>%
   ggplot(aes(method, quant)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "RMSE", low = "white", high = "steelblue") +
-  labs(x = "", y = "") +
-  bayesplot::theme_default()
+  labs(x = "", y = "")
 ggsave("weighting_code/plots/var3_rmse_case1.pdf", width = 6)
 
 
@@ -683,8 +682,7 @@ plotdata %>%
   ggplot(aes(method, quant)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "Avg SD", low = "white", high = "steelblue") +
-  labs(x = "", y = "") +
-  bayesplot::theme_default()
+  labs(x = "", y = "")
 ggsave("weighting_code/plots/var3_se_case1.pdf", width = 6)
 
 
@@ -694,6 +692,5 @@ plotdata %>%
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "Coverage", low = "steelblue", high = "white") +
   labs(x = "", y = "") +
-  bayesplot::theme_default()
 ggsave("weighting_code/plots/var3_cr_case1.pdf", width = 6)
 
