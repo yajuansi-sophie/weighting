@@ -9,11 +9,17 @@ require(ggplot2)
 require(dplyr)
 library(directlabels)
 
+if (!require(devtools)) {
+  install.packages("devtools")
+  library(devtools)
+}
+install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
+
 set.seed(20150213)
 
-source('weighting_code/helper_functions.R')
+source('helper_functions.R')
 
-acs_ad <- readRDS('weighting_code/data/acs_ad.RDS')
+acs_ad <- readRDS('data/acs_ad.RDS')
 
 q <- 8
 
@@ -236,21 +242,43 @@ S_st <-
 stan_glmer(
   formula = ff,
   data = dat_rstanarm,
-  iter = 50,
-  chains = 1,
+  iter = 1000,
+  chains = 4,
   cores = 1,
   prior_covariance = 
     mrp_structured(
       cell_size = dat_rstanarm$n, 
       cell_sd = dat_rstanarm$sd_cell,
       group_level_scale = 1, 
-      group_level_df = 10
+      group_level_df = 1
     ),
   seed = 123,
   prior_aux = cauchy(0, 5),
   prior_intercept = normal(0, 100, autoscale = FALSE),
   adapt_delta = 0.80
 )
+
+colnames(as.matrix(S_st))
+
+draws <- as.matrix(S_st, pars = c("sigma","lambda_m[1]", "lambda_m[2]",
+                                  "lambda_m[3]","lambda_m[4]","lambda_m[5]",
+                                  "lambda_m[6]","lambda_m[7]","lambda_m[8]",
+                                  "lambda_inter[2]","lambda_inter[1]", "sigma_m",
+                                  "Sigma[cld:(Intercept),(Intercept)]"))
+draws <- as.matrix(S_st, pars = colnames(as.matrix(S_st))[403:432])
+
+for (j in 404:413){
+j <- j-402 #413
+print(summary(draws[,j]))
+}
+sd(draws[,j])
+
+quantile(sqrt(pri_var(S_st)$sigma_y_sq),prob=c(0.025,0.5,0.975))
+plot(pri_var(S_st)$sigma_y_sq)
+summary(sqrt(pri_var(S_st)$sigma_theta_sq))
+quantile(sqrt(pri_var(S_st)$sigma_theta_sq),prob=c(0.025,0.5,0.975))
+
+summary(apply(shrinkage_factor(S_st,dat_rstanarm$n),2,median))
 
 output_st <- sum_svey_model(S_st, agg_pop)
 
@@ -260,8 +288,8 @@ S_iid <-
 stan_glmer(
   formula = ff,
   data = dat_rstanarm,
-  iter = 50,
-  chains = 1,
+  iter = 500,
+  chains = 4,
   cores = 1,
   prior_covariance = 
     mrp_structured(
@@ -274,6 +302,16 @@ stan_glmer(
   prior_intercept = normal(0, 100, autoscale = FALSE),
   adapt_delta = 0.8
 )
+
+load("output/8var.RData")
+
+draws <- as.matrix(S_iid, pars = colnames(as.matrix(S_iid))[403:421])
+
+for (j in 403:421){
+  j <- j-402 #413
+  print(summary(draws[,j]))
+}
+sd(draws[,j])
 
 output_iid <- sum_svey_model(S_iid, agg_pop)
 
@@ -515,16 +553,16 @@ over_mean_wgt <- data.frame(cbind(c(sd(w_unit), max(w_unit)/min(w_unit), mean(ou
         var(dat$Y)))/n), c(sd(w_rake), max(w_rake)/min(w_rake), sum(w_rake * dat$Y)/sum(w_rake) - mean(Y), sqrt(sum(w_rake^2 * 
         var(dat$Y)))/n), c(sd(w_ips), max(w_ips)/min(w_ips), sum(w_ips * dat$Y)/sum(w_ips) - mean(Y), sqrt(sum(w_ips^2 * 
         var(dat$Y)))/n)))
-mar_wgt_mean <- data.frame(cbind(c(apply(bias_sub_st, 2, mean), apply(sd_sub_st, 2, mean)), c(apply(bias_sub_iid, 
-    2, mean), apply(sd_sub_iid, 2, mean)), c(apply(bias_sub_st_wt, 2, mean), apply(sd_sub_st_wt, 2, mean)), c(apply(bias_sub_iid_wt, 
-    2, mean), apply(sd_sub_iid_wt, 2, mean)), c(apply(bias_sub_ps_wt, 2, mean), apply(sd_sub_ps_wt, 2, mean)), 
-    c(apply(bias_sub_rake_wt, 2, mean), apply(sd_sub_rake_wt, 2, mean)), c(apply(bias_sub_ips_wt, 2, mean), apply(sd_sub_ips_wt, 
-        2, mean))))
 
-int_wgt_mean <- data.frame(cbind(c(mean(bias_sub_st_int), mean(sd_sub_st_int)), c(mean(bias_sub_iid_int), mean(sd_sub_iid_int)), 
-    c(mean(bias_sub_st_wt_int), mean(sd_sub_st_wt_int)), c(mean(bias_sub_iid_wt_int), mean(sd_sub_iid_wt_int)), 
-    c(mean(bias_sub_ps_wt_int), mean(sd_sub_ps_wt_int)), c(mean(bias_sub_rake_wt_int), mean(sd_sub_rake_wt_int)), 
-    c(mean(bias_sub_ips_wt_int), mean(sd_sub_ips_wt_int))))
+mar_wgt_mean <- data.frame(cbind(c(bias_sub_st,sd_sub_st),c(bias_sub_iid,sd_sub_iid), 
+                             c(bias_sub_st_wt,sd_sub_st_wt),c(bias_sub_iid_wt,sd_sub_iid_wt), 
+                            c(bias_sub_ps_wt,sd_sub_ps_wt),c(bias_sub_rake_wt,sd_sub_rake_wt), 
+                            c(bias_sub_ips_wt,sd_sub_ips_wt)))
+
+int_wgt_mean <- data.frame(cbind(c(mean(bias_sub_st_int,sd_sub_st_int,bias_sub_iid_int,sd_sub_iid_int)), 
+    c(mean(bias_sub_st_wt_int,sd_sub_st_wt_int,bias_sub_iid_wt_int,sd_sub_iid_wt_int)), 
+    c(mean(bias_sub_ps_wt_int,sd_sub_ps_wt_int,bias_sub_rake_wt_int,sd_sub_rake_wt_int)), 
+    c(mean(bias_sub_ips_wt_int,sd_sub_ips_wt_int))))
 
 
 weights <- cbind(c(w_unit, w_rake, w_ips, w_ps, w_unit_iid), c(rep("Str-W", n), rep("Rake-W", n), rep("IP-W", 
@@ -533,7 +571,7 @@ weights <- data.frame(weights)
 names(weights) <- c("wt", "Method")
 weights$wt <- log(as.numeric(as.character(weights$wt)))
 weights$Method <- factor(weights$Method, levels = c("Str-W", "Rake-W", "IP-W", "PS-W", "Ind-W"))
-
+#
 direct.label(ggplot(weights[1:(3 * n), ], aes(x = wt, group = Method)) + geom_density(aes(color = Method)) + theme_bw() + 
     scale_x_continuous(name = "Distributions of log(weights)") + scale_y_continuous(name = "", expand = c(0, 0), 
     limits = c(0, 0.8)) + theme(axis.line.x = element_line(colour = "black"), axis.line.y = element_blank(), legend.position = "", 
@@ -565,17 +603,16 @@ direct.label(ggplot(weights_y[c(1:(3 * n), (5 * n + 1):dim(weights_y)[1]), ], ae
 ggsave("plot/weighted-density.pdf")
 
 # se
-se_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
-    "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
-    ">=col", "male", "female", "pov-gap <50%", "pov-gap50-100%", "pov-gap100-200%", "pov-gap200-300%", "pov-gap300%+", 
-    "#eld=0", "#eld=1", "#eld>=2", "#cld=0", "#cld=1", "#cld=2", "#cld>=3", "#fam=1", "#fam=2", "#fam=3", "#fam>=4"), 
-    rbind(over_mean_wgt[4, ], int_wgt_mean[2, ], mar_wgt_mean[sum(l_v) + 1:sum(l_v), ])))
+#se_out <- data.frame(cbind(c("overall", "non-white young", "age:18-34", "age:35-44", "age:45-54", "age:55-64", 
+#    "age:65+", "whi&non-Hisp", "blac&non-Hisp", "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", 
+#    ">=col", "male", "female", "pov-gap <50%", "pov-gap50-100%", "pov-gap100-200%", "pov-gap200-300%", "pov-gap300%+", 
+#    "#eld=0", "#eld=1", "#eld>=2", "#cld=0", "#cld=1", "#cld=2", "#cld>=3", "#fam=1", "#fam=2", "#fam=3", "#fam>=4"), 
+#    rbind(over_mean_wgt[4, ], int_wgt_mean[2, ], mar_wgt_mean[sum(l_v) + 1:sum(l_v), ])))
 
 se_out <- data.frame(cbind(c("age:18-34", "age:35-44", "age:45-54", "age:55-64", "age:65+", "whi&non-Hisp", "blac&non-Hisp", 
     "Asian", "Hisp", "other race/eth", "<high sch", "high sch", "some col", ">=col", "male", "female", "pov-gap <50%", 
     "pov-gap50-100%", "pov-gap100-200%", "pov-gap200-300%", "pov-gap300%+", "#eld=0", "#eld=1", "#eld>=2", "#cld=0", 
-    "#cld=1", "#cld=2", "#cld>=3", "#fam=1", "#fam=2", "#fam=3", "#fam>=4"), mar_wgt_mean[sum(l_v) + 1:sum(l_v), 
-    ]))
+    "#cld=1", "#cld=2", "#cld>=3", "#fam=1", "#fam=2", "#fam=3", "#fam>=4"), mar_wgt_mean[sum(l_v) + 1:sum(l_v), ]))
 
 colnames(se_out) <- c("Quantity", "Str-P", "Ind-P", "Str-W", "Ind-W", "PS-W", "Rake-W", "IP-W")
 se_out$Quantity <- factor(se_out$Quantity, levels = c("age:18-34", "age:35-44", "age:45-54", "age:55-64", "age:65+", 
@@ -594,7 +631,7 @@ re_se_out$Quantity <- factor(re_se_out$Quantity, levels = c("age:18-34", "age:35
 re_se_out.m <- reshape2::melt(re_se_out)
 
 ggplot(re_se_out.m, aes(x = value, fill = variable)) + geom_histogram(binwidth = 0.01, alpha = 0.5, position = "identity") + 
-    scale_x_continuous("Relative SE", breaks = seq(1, 1.1, by = 0.01), limits = c(1, 1.1), expand = c(0, 0)) + 
+    scale_x_continuous("Relative SE", breaks = seq(1, 1.1, by = 0.01), expand = c(0, 0)) + 
     scale_y_continuous(name = "Count of margins", expand = c(0, 0)) + theme_bw() + theme(axis.line = element_line(colour = "black"), 
     legend.position = "bottom", legend.title = element_blank(), legend.text = element_text(size = 14), axis.text = element_text(size = 14), 
     axis.title = element_text(size = 16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
@@ -603,7 +640,7 @@ ggplot(re_se_out.m, aes(x = value, fill = variable)) + geom_histogram(binwidth =
 ggsave("plot/var8_w_se.pdf")
 
 
-ratios <- cbind(apply(output_iid$mu_cell_pred, 2, sd)/apply(output$mu_cell_pred, 2, sd), rep("Relative SE", J_true))
+ratios <- cbind(apply(output_iid$mu_cell_pred, 2, sd)/apply(output$mu_cell_pred, 2, sd), rep("Relative SE", length(apply(output$mu_cell_pred, 2, sd))))
 ratios <- data.frame(ratios)
 names(ratios) <- c("ratios", "term")
 ratios$ratios <- as.numeric(as.character(ratios$ratios))
@@ -612,10 +649,10 @@ ratios$ratios <- as.numeric(as.character(ratios$ratios))
 ggplot(ratios, aes(x = ratios, fill = term)) + geom_histogram(binwidth = 0.05, alpha = 0.5, position = "identity") +
     scale_x_continuous("Relative SE", breaks = seq(0.9, 2, by = 0.1), expand = c(0, 0)) + scale_y_continuous("Count of cells",
     expand = c(0, 0)) + scale_fill_discrete(name = "", labels = c("Ind-P/Str-P")) + theme_bw() + theme(axis.line = element_line(colour = "black"),
-    legend.position = "bottom", legend.title = element_blank(), legend.text = element_text(size = 14), axis.text = element_text(size = 14),
-    axis.title = element_text(size = 16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    legend.position = "bottom", legend.title = element_blank(), legend.text = element_text(size = 16), axis.text = element_text(size = 16),
+    axis.title = element_text(size = 18), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     panel.border = element_blank(), panel.background = element_blank())
 
 ggsave("plot/var8_p_se.pdf")
 
-
+save.image("output/8var.RData")

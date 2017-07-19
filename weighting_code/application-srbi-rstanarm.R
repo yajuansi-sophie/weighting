@@ -11,13 +11,19 @@ require(gridExtra)
 library(xtable)
 library(reshape2)
 library(dplyr)
+library(foreign)
 
+if (!require(devtools)) {
+  install.packages("devtools")
+  library(devtools)
+}
+install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
 set.seed(20150213)
 
-source('weighting_code/helper_functions.R')
+source('helper_functions.R')
 
 # prepare data
-data <- read.dta("weighting_code/data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
+data <- read.dta("data/SRBIandAGENCYbaselinew1w2w3datawithwghts072114.dta")
 SRBIdata <- 
   data %>% 
   filter(sample == "SRBI") %>%
@@ -54,7 +60,7 @@ SRBIdata <- within(SRBIdata, {
 
 
 # prepare population data (ACS)
-acs_ad <- readRDS('weighting_code/data/acs_ad.RDS')
+acs_ad <- readRDS('data/acs_ad.RDS')
 
 acs_ad %>% 
   mutate(
@@ -119,7 +125,7 @@ fit <-
       (1 | age:eth) + (1 | age:edu) + (1 | age:inc) + (1 | eth:edu) + (1 | eth:inc) + 
       (1 | age:eth:edu) + (1 | age:eth:inc),
     data = dat_rstanarm,
-    iter = 8000,
+    iter = 1000,
     chains = 4,
     cores = 4,
     prior_covariance = 
@@ -127,13 +133,43 @@ fit <-
         cell_size = dat_rstanarm$n, 
         cell_sd = dat_rstanarm$sd_cell, 
         group_level_scale = 1,
-        group_level_df = 7
+        group_level_df = 1
       ),
     seed = 123,
     prior_aux = cauchy(0, 5),
     prior_intercept = normal(0, 100, autoscale = FALSE), 
     adapt_delta = 0.99
   )
+
+colnames(as.matrix(fit))
+# [349] "sigma"                                     
+# [350] "Sigma[age:eth:inc:(Intercept),(Intercept)]"
+# [351] "Sigma[age:eth:edu:(Intercept),(Intercept)]"
+# [352] "Sigma[eth:inc:(Intercept),(Intercept)]"    
+# [353] "Sigma[age:inc:(Intercept),(Intercept)]"    
+# [354] "Sigma[age:eth:(Intercept),(Intercept)]"    
+# [355] "Sigma[eth:edu:(Intercept),(Intercept)]"    
+# [356] "Sigma[age:edu:(Intercept),(Intercept)]"    
+# [357] "Sigma[inc:(Intercept),(Intercept)]"        
+# [358] "Sigma[eth:(Intercept),(Intercept)]"        
+# [359] "Sigma[age:(Intercept),(Intercept)]"        
+# [360] "Sigma[edu:(Intercept),(Intercept)]"        
+# [361] "lambda_inter[1]"                           
+# [362] "lambda_inter[2]"                           
+# [363] "sigma_m"                                   
+# [364] "lambda_m[1]"                               
+# [365] "lambda_m[2]"                               
+# [366] "lambda_m[3]"                               
+# [367] "lambda_m[4]"
+
+draws <- as.matrix(fit, pars = c("sigma","lambda_m[1]", "lambda_inter[1]", "sigma_m"))
+
+quantile(sqrt(pri_var(fit)$sigma_y_sq),prob=c(0.025,0.5,0.975))
+plot(pri_var(fit)$sigma_y_sq)
+summary(sqrt(pri_var(fit)$sigma_theta_sq))
+quantile(sqrt(pri_var(fit)$sigma_theta_sq),prob=c(0.025,0.5,0.975))
+
+summary(apply(shrinkage_factor(fit,dat_rstanarm$n),2,median))
 
 output <- sum_svey_model(fit, agg_pop)
 
@@ -147,6 +183,7 @@ mb_out <-
 
 output$mu_w <- mean(mb_out$Y_w)
 output$w_unit <- mb_out$w
+
 
 mb_design <- svydesign(id = ~ 1, data = dat, weights = output$w_unit)
 svymean(~Y, mb_design)
@@ -197,46 +234,34 @@ w_rake <- w_rake_df$w
 w_ps <- w_ps_df$w
 n <- nrow(dat)
 
-pop_tab <- svytable( ~ edu + age, acs_design) / sum(svytable( ~ edu + age, acs_design))
-samp_tab_mb <- svytable( ~ edu + age, mb_design) / n
-samp_tab_ps <- svytable( ~ edu + age, ps_design) / n
-samp_tab_rake <- svytable( ~ edu + age, rake_design) / n
-
-print(
-  xtable(
-    cbind(
-    "Model-based" = sqrt(sum((pop_tab - samp_tab_mb) ^ 2)), 
-    "PS" = sqrt(sum((pop_tab - samp_tab_ps) ^ 2)), 
-    "Raking" = sqrt(sum((pop_tab - samp_tab_rake) ^ 2))
-  ), 
-  digits = 3)
-)
-
-
 # log-weights distributions
 log_weights_plot <- 
   data.frame(
     wt = log(c(w_unit, w_rake, w_ps)), 
-    method = factor(rep(c("Model-based", "Raking", "PS"), each = n), 
-                    levels = c("Model-based", "Raking", "PS"))
+    method = factor(rep(c("Str-W", "Rake-W", "PS-W"), each = n), 
+                    levels = c("Str-W", "Rake-W", "PS-W"))
   ) %>%
   ggplot(aes(x = wt, group = method)) + 
   geom_density(aes(color = method)) + 
-  scale_x_continuous(name = "log(weight)") + 
-  bayesplot::theme_default() + 
+  scale_x_continuous(name = "Distributions of log(weights) in the LSW") + 
+  scale_y_continuous(name = "",limits = c(0, 1.6)) + 
+  coord_cartesian(expand = FALSE) +
+  bayesplot::theme_default() +
+  theme(axis.line.y = element_blank())+
+  bayesplot::xaxis_text(size = 14) +
+  bayesplot::xaxis_title(size = 16) +
   bayesplot::yaxis_text(FALSE) +
-  bayesplot::yaxis_title(FALSE) +
-  ggtitle("Distributions of log-weights \nin the LSW")
+  bayesplot::yaxis_title(FALSE)
 direct.label(log_weights_plot)
-ggsave("weighting_code/plots/weight-lsw.pdf")
+ggsave("plot/weight-lsw.pdf")
 
 
 
 # Weighted distribution of life satisfaction score in the LSW
 data.frame(
   wt = c(w_unit/sum(w_unit), w_rake/sum(w_rake), w_ps/sum(w_ps), rep(1/n, n)), 
-  method = factor(rep(c("Model-based", "Raking", "PS", "Sample"), each = n),
-                  levels = c("Model-based", "Raking", "PS", "Sample")),
+  method = factor(rep(c("Str-W", "Rake-W", "PS-W", "Sample"), each = n),
+                  levels = c("Str-W", "Rake-W", "PS-W", "Sample")),
   Y = dat$Y
 ) %>%
   ggplot(aes(x = Y, weights = wt, group = method)) + 
@@ -247,12 +272,17 @@ data.frame(
     position = "identity"
   ) +
   scale_color_discrete("") +
-  coord_cartesian(expand = FALSE) +
-  labs(x = "weighted score", y = NULL) + 
+  labs(x = "Weighted distribution of life satisfaction score in the LSW", y = NULL) +
+  scale_y_continuous(expand = c(0, 0))+
+  #coord_cartesian(expand = FALSE) +
   bayesplot::theme_default() + 
+  theme(axis.line.y = element_blank(),axis.ticks = element_blank(),legend.position = c(0.2,0.75))+
+  bayesplot::xaxis_text(size = 14) +
+  bayesplot::xaxis_title(size = 16) +
   bayesplot::yaxis_text(FALSE) +
-  ggtitle("Weighted distribution of life satisfaction \nscore in the LSW")
-ggsave("weighting_code/plots/weighted-lsw-density.pdf")
+  bayesplot::yaxis_title(FALSE)
+  
+ggsave("plot/weighted-lsw-density.pdf")
 
 
 # over_mean_wgt
@@ -284,7 +314,7 @@ over_mean_wgt <-
     ), 
     row.names = c("SD.W", "Max/Min.W", "Est", "SE")
   )
-print(xtable(over_mean_wgt, digits = 3))
+print(xtable(over_mean_wgt, digits = 2))
 
 ### marginal means sub domain
 l_v <- c(0, J_age, J_eth, J_edu, J_inc)
@@ -374,68 +404,84 @@ se_out.m <- melt(se_out, id.vars = "quantity")
   ggplot(est_out.m, aes(variable, quantity)) + 
   geom_tile(aes(fill = value), colour = "white") + 
   scale_fill_gradient(name = "Est", low = "white", high = "slategrey") + 
-  labs(x = "", y = "") + 
-  scale_x_discrete(expand = c(0, 0)) + 
-  scale_y_discrete(expand = c(0,0)) + 
+  labs(x = "", y = "") +coord_cartesian(expand = FALSE) + 
   bayesplot::theme_default() + 
   theme(
     axis.line = element_line(colour = "black"),
     axis.text = element_text(size = 12)
   )
 )
-ggsave("weighting_code/plots/lsw_mar_est.pdf", width = 5)
+ggsave("plot/lsw_mar_est.pdf", width = 5)
 
 (
   plot2 <-
     ggplot(se_out.m, aes(variable, quantity)) +
     geom_tile(aes(fill = value), colour = "white") +
     scale_fill_gradient(name = "SE", low = "white", high = "steelblue") +
-    labs(x = "", y = "") +
-    scale_x_discrete(expand = c(0, 0)) +
-    scale_y_discrete(expand = c(0, 0)) +
+    labs(x = "", y = "") +coord_cartesian(expand = FALSE) +
     bayesplot::theme_default() + 
     theme(
       axis.line = element_line(colour = "black"),
       axis.text = element_text(size = 12)
     )
 )
-ggsave("weighting_code/plots/lsw_mar_se.pdf", width = 5)
+ggsave("plot/lsw_mar_se.pdf", width = 5)
 
 
 
 
 ###-----------interaction---------------###
 
-# # 170 age>=65 & poverty gap 5 300%+
-# sub_cell_idx_55 <- 
-#   agg_pop %>% 
-#   filter(cell_str$age == 5 & cell_str$inc == 5) %>% 
-#   select(cell_id, N)
-# 
-# # 57 2 Black Non-Hispanic & poverty gap under 50%
-# sub_cell_idx_21 <- 
-#   agg_pop %>%
-#   filter(cell_str$eth == 2 & cell_str$inc == 1) %>% 
-#   select(cell_id, N)
-
-# 222 age 35-64 1 White Non-Hispani 5 300%+ highly educated
-sub_cell_idx_143 <-
+# # 154 age>=65 & poverty gap < 200%+
+sub_cell_idx <-
   agg_pop %>%
-  filter(as.integer(eth) == 1 &
-           as.integer(edu) == 4 &
-           as.integer(inc) < 3 & as.integer(age) %in% 2:4) %>%
+  filter(as.integer(age) == 5 & as.integer(inc) < 4) %>%
   select(cell_id, N) %>%
   mutate(p = N / sum(N))
 
+dat_sub_cell_idx <-
+  dat_rstanarm %>% ungroup(age, eth, edu, inc) %>%
+  filter(as.integer(age) == 5 & as.integer(inc) < 4) %>%
+  select(cell_id, n)
 
-st_est_sm <- output$mu_cell_pred[, sub_cell_idx_143$cell_id] %*% sub_cell_idx_143$p
+# # 57 2 Black Non-Hispanic & poverty gap under 50%
+sub_cell_idx <-
+  agg_pop %>%
+  filter(as.integer(eth) == 2 & as.integer(inc) == 1) %>%
+  select(cell_id, N) %>%
+  mutate(p = N / sum(N))
+
+dat_sub_cell_idx <-
+  dat_rstanarm %>% ungroup(age, eth, edu, inc) %>%
+  filter(as.integer(eth) == 2 & as.integer(inc) == 1) %>%
+  select(cell_id, n)
+
+# 222 age 35-64 1 White Non-Hispani 5 300%+ highly educated
+sub_cell_idx <-
+  agg_pop %>%
+  filter(as.integer(eth) == 1 &
+           as.integer(edu) == 4 &
+           as.integer(inc) == 5 & as.integer(age) %in% 2:4) %>%
+  select(cell_id, N) %>%
+  mutate(p = N / sum(N))
+
+dat_sub_cell_idx <-
+  dat_rstanarm %>% ungroup(age, eth, edu, inc) %>%
+  filter(as.integer(eth) == 1 &
+           as.integer(edu) == 4 &
+           as.integer(inc) == 5 & as.integer(age) %in% 2:4) %>%
+  select(cell_id, n)
+
+sum(dat_sub_cell_idx$n)
+
+st_est_sm <- output$mu_cell_pred[, sub_cell_idx$cell_id] %*% sub_cell_idx$p
 est_sub_st_int <- mean(st_est_sm)
 sd_sub_st_int <- sd(st_est_sm)
 
 # model-based weights under st prior
 w_sum_mb <-
   sum_weights(weight_df = mb_out,
-              idx = sub_cell_idx_143$cell_id,
+              idx = sub_cell_idx$cell_id,
               comp_stat = 0)
 est_sub_st_wt_int <- w_sum_mb$est_wt
 sd_sub_st_wt_int <- w_sum_mb$sd_wt
@@ -443,7 +489,7 @@ sd_sub_st_wt_int <- w_sum_mb$sd_wt
 # ps weights
 w_sum_ps <-
   sum_weights(weight_df = w_ps_df,
-              idx = sub_cell_idx_143$cell_id,
+              idx = sub_cell_idx$cell_id,
               comp_stat = 0)
 est_sub_ps_wt_int <- w_sum_ps$est_wt
 sd_sub_ps_wt_int <- w_sum_ps$sd_wt
@@ -451,7 +497,7 @@ sd_sub_ps_wt_int <- w_sum_ps$sd_wt
 # rake weights
 w_sum_rake <-
   sum_weights(weight_df = w_rake_df,
-              idx = sub_cell_idx_143$cell_id,
+              idx = sub_cell_idx$cell_id,
               comp_stat = 0)
 est_sub_rake_wt_int <- w_sum_rake$est_wt 
 sd_sub_rake_wt_int <- w_sum_rake$sd_wt
@@ -464,4 +510,91 @@ int_wgt_mean <-
     "PS" = c(est_sub_ps_wt_int, sd_sub_ps_wt_int),
     row.names = c("Est", "SE")
   )
-print(xtable(int_wgt_mean, digits = 3))
+print(xtable(int_wgt_mean, digits = 2))
+
+# weighted difference check
+pop_tab <- svytable( ~ age, acs_design) / sum(svytable( ~ age, acs_design))
+samp_tab_mb <- svytable( ~ age, mb_design) / n
+samp_tab_ps <- svytable( ~ age, ps_design) / n
+samp_tab_rake <- svytable( ~ age, rake_design) / n
+
+pop_tab <- svytable( ~ eth, acs_design) / sum(svytable( ~ eth, acs_design))
+samp_tab_mb <- svytable( ~ eth, mb_design) / n
+samp_tab_ps <- svytable( ~ eth, ps_design) / n
+samp_tab_rake <- svytable( ~ eth, rake_design) / n
+
+pop_tab <- svytable( ~ edu, acs_design) / sum(svytable( ~ edu, acs_design))
+samp_tab_mb <- svytable( ~ edu, mb_design) / n
+samp_tab_ps <- svytable( ~ edu, ps_design) / n
+samp_tab_rake <- svytable( ~ edu, rake_design) / n
+
+pop_tab <- svytable( ~ inc, acs_design) / sum(svytable( ~ inc, acs_design))
+samp_tab_mb <- svytable( ~ inc, mb_design) / n
+samp_tab_ps <- svytable( ~ inc, ps_design) / n
+samp_tab_rake <- svytable( ~ inc, rake_design) / n
+
+pop_tab <- svytable( ~ eth + age, acs_design) / sum(svytable( ~ eth + age, acs_design))
+samp_tab_mb <- svytable( ~ eth + age, mb_design) / n
+samp_tab_ps <- svytable( ~ eth + age, ps_design) / n
+samp_tab_rake <- svytable( ~ eth + age, rake_design) / n
+
+pop_tab <- svytable( ~ edu + age, acs_design) / sum(svytable( ~ edu + age, acs_design))
+samp_tab_mb <- svytable( ~ edu + age, mb_design) / n
+samp_tab_ps <- svytable( ~ edu + age, ps_design) / n
+samp_tab_rake <- svytable( ~ edu + age, rake_design) / n
+
+pop_tab <- svytable( ~ inc + age, acs_design) / sum(svytable( ~ inc + age, acs_design))
+samp_tab_mb <- svytable( ~ inc + age, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + age, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + age, rake_design) / n
+
+pop_tab <- svytable( ~ inc + eth, acs_design) / sum(svytable( ~ inc + eth, acs_design))
+samp_tab_mb <- svytable( ~ inc + eth, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + eth, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + eth, rake_design) / n
+
+pop_tab <- svytable( ~ edu + eth, acs_design) / sum(svytable( ~ edu + eth, acs_design))
+samp_tab_mb <- svytable( ~ edu + eth, mb_design) / n
+samp_tab_ps <- svytable( ~ edu + eth, ps_design) / n
+samp_tab_rake <- svytable( ~ edu + eth, rake_design) / n
+
+pop_tab <- svytable( ~ edu + inc, acs_design) / sum(svytable( ~ edu + inc, acs_design))
+samp_tab_mb <- svytable( ~ edu + inc, mb_design) / n
+samp_tab_ps <- svytable( ~ edu + inc, ps_design) / n
+samp_tab_rake <- svytable( ~ edu + inc, rake_design) / n
+
+pop_tab <- svytable( ~ edu + age + eth, acs_design) / sum(svytable( ~ edu + age + eth, acs_design))
+samp_tab_mb <- svytable( ~ edu + age + eth, mb_design) / n
+samp_tab_ps <- svytable( ~ edu + age + eth, ps_design) / n
+samp_tab_rake <- svytable( ~ edu + age + eth, rake_design) / n
+
+pop_tab <- svytable( ~ inc + age + eth, acs_design) / sum(svytable( ~ inc + age + eth, acs_design))
+samp_tab_mb <- svytable( ~ inc + age + eth, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + age + eth, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + age + eth, rake_design) / n
+
+pop_tab <- svytable( ~ inc + age + edu, acs_design) / sum(svytable( ~ inc + age + edu, acs_design))
+samp_tab_mb <- svytable( ~ inc + age + edu, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + age + edu, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + age + edu, rake_design) / n
+
+pop_tab <- svytable( ~ inc + eth + edu, acs_design) / sum(svytable( ~ inc + eth + edu, acs_design))
+samp_tab_mb <- svytable( ~ inc + eth + edu, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + eth + edu, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + eth + edu, rake_design) / n
+
+pop_tab <- svytable( ~ inc + age + edu+ eth, acs_design) / sum(svytable( ~ inc + age + edu+ eth, acs_design))
+samp_tab_mb <- svytable( ~ inc + age + edu+ eth, mb_design) / n
+samp_tab_ps <- svytable( ~ inc + age + edu+ eth, ps_design) / n
+samp_tab_rake <- svytable( ~ inc + age + edu+ eth, rake_design) / n
+
+
+print(
+  xtable(
+    cbind(
+      "Model-based" = sqrt(sum((pop_tab - samp_tab_mb) ^ 2)), 
+      "PS" = sqrt(sum((pop_tab - samp_tab_ps) ^ 2)), 
+      "Raking" = sqrt(sum((pop_tab - samp_tab_rake) ^ 2))
+    ), 
+    digits = 2)
+)

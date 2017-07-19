@@ -1,7 +1,19 @@
-library(rstanarm) # requires structured_prior_merge branch
-library(survey)
-library(dplyr)
-library(ggplot2)
+###---------------MRP to Construct Survey Weights--------------###
+### Author: YS & RT & JG Latest Edit date: 07/11/2017 clear
+remove(list = objects())
+
+#----------required packages-----------------#
+require(rstanarm)
+require(survey)
+require(ggplot2)
+require(dplyr)
+library(directlabels)
+
+if (!require(devtools)) {
+  install.packages("devtools")
+  library(devtools)
+}
+install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
 
 set.seed(20150213)
 
