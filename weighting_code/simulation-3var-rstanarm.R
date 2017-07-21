@@ -685,6 +685,7 @@ plotdata %>%
 ggsave("plot/var3_se.pdf")
 
 
+
 plotdata %>% 
   filter(est == "coverage") %>%
   ggplot(aes(method, quant)) +
@@ -693,4 +694,5 @@ plotdata %>%
   labs(x = "", y = "") +
      theme(axis.text = element_text(size = 20))
 ggsave("plot/var3_cr.pdf")
+
 

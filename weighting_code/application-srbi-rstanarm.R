@@ -216,6 +216,9 @@ w_rake <- w_rake_df$w
 w_ps <- w_ps_df$w
 n <- nrow(dat)
 
+
+theme_set(bayesplot::theme_default(base_family = "sans"))
+
 # log-weights distributions
 log_weights_plot <-
   data.frame(
@@ -228,7 +231,6 @@ log_weights_plot <-
   scale_x_continuous(name = "Distributions of log(weights) in the LSW") +
   scale_y_continuous(name = "",limits = c(0, 1.6)) +
   coord_cartesian(expand = FALSE) +
-  bayesplot::theme_default() +
   theme(axis.line.y = element_blank())+
   bayesplot::xaxis_text(size = 20) +
   bayesplot::xaxis_title(size = 28) +
@@ -256,8 +258,6 @@ data.frame(
   scale_color_discrete("") +
   labs(x = "Weighted distribution of life satisfaction score in the LSW", y = NULL) +
   scale_y_continuous(expand = c(0, 0))+
-  #coord_cartesian(expand = FALSE) +
-  bayesplot::theme_default() +
   theme(axis.line.y = element_blank(),axis.ticks = element_blank(),legend.position = c(0.2,0.75),legend.text = element_text(size = 20))+
   bayesplot::xaxis_text(size = 20) +
   bayesplot::xaxis_title(size = 28) +
