@@ -1,12 +1,12 @@
 ###---------------MRP to Construct Survey Weights--------------###
-### Author: YS & RT & JG Latest Edit date: 07/11/2017 clear
+### Author: YS & RT & JG Latest Edit date: 07/19/2017 clear
 remove(list = objects())
 
 #----------required packages-----------------#
-require(rstanarm)
-require(survey)
-require(ggplot2)
-require(dplyr)
+library(rstanarm)
+library(survey)
+library(ggplot2)
+library(dplyr)
 library(directlabels)
 
 if (!require(devtools)) {
@@ -17,10 +17,10 @@ install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE
 
 set.seed(20150213)
 
-source('weighting_code/helper_functions.R')
+source('helper_functions.R')
 
 # load clean population data
-acs_ad <- readRDS('weighting_code/data/acs_ad.RDS')
+acs_ad <- readRDS('data/acs_ad.RDS')
 
 q <- 3  # number of weighting variables
 
@@ -38,7 +38,7 @@ age_edu <- model.matrix(~ 0 + age:edu, acs_ad)
 eth_edu <- model.matrix(~ 0 + eth:edu, acs_ad)
 age_eth_edu <- model.matrix(~ 0 + age:eth:edu, acs_ad)
 
-### simulate Y case 1)
+### simulate Y
 
 col_vec <- function(x, nr) matrix(x, nrow = nr, ncol = 1)
 
@@ -105,7 +105,7 @@ agg_pop <-
   ) %>%
   ungroup()
 
-R <- 3 # number of repeats
+R <- 500 # number of repeats
 n_r <-
   bias_mu_pred <-
   sd_mu_pred <-
@@ -562,10 +562,6 @@ for (r in 1:R) {
      
 }  #end of repeated sampling
 
-
-
-
-
 ###------------plots------------### 
 
 plotdata <- data.frame(
@@ -579,8 +575,8 @@ plotdata <- data.frame(
         "age:45-54",
         "age:55-64",
         "age:65+",
-        "whi&non-Hisp",
-        "blac&non-Hisp",
+        "white&non-Hisp",
+        "black&non-Hisp",
         "Asian",
         "Hisp",
         "other race/eth",
@@ -597,8 +593,8 @@ plotdata <- data.frame(
       "age:45-54",
       "age:55-64",
       "age:65+",
-      "whi&non-Hisp",
-      "blac&non-Hisp",
+      "white&non-Hisp",
+      "black&non-Hisp",
       "Asian",
       "Hisp",
       "other race/eth",
@@ -659,14 +655,15 @@ plotdata <- data.frame(
   )
 )
 
+theme_set(bayesplot::theme_default(base_family = "sans"))
 plotdata %>% 
   filter(est == "bias") %>%
   ggplot(aes(method, quant)) +
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "abs(Bias)", low = "white", high = "steelblue") +
   labs(x = "", y = "") +
-  bayesplot::theme_default()
-ggsave("weighting_code/plots/var3_bias_case1.pdf", width = 6)
+  theme(axis.text = element_text(size = 20))
+ggsave("plot/var3_bias.pdf")
 
 plotdata %>% 
   filter(est == "rmse") %>%
@@ -674,8 +671,8 @@ plotdata %>%
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "RMSE", low = "white", high = "steelblue") +
   labs(x = "", y = "") +
-  bayesplot::theme_default()
-ggsave("weighting_code/plots/var3_rmse_case1.pdf", width = 6)
+     theme(axis.text = element_text(size = 20))
+ggsave("plot/var3_rmse.pdf")
 
 
 plotdata %>% 
@@ -684,8 +681,8 @@ plotdata %>%
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "Avg SD", low = "white", high = "steelblue") +
   labs(x = "", y = "") +
-  bayesplot::theme_default()
-ggsave("weighting_code/plots/var3_se_case1.pdf", width = 6)
+     theme(axis.text = element_text(size = 20))
+ggsave("plot/var3_se.pdf")
 
 
 plotdata %>% 
@@ -694,6 +691,6 @@ plotdata %>%
   geom_tile(aes(fill = value), colour = "white") +
   scale_fill_gradient(name = "Coverage", low = "steelblue", high = "white") +
   labs(x = "", y = "") +
-  bayesplot::theme_default()
-ggsave("weighting_code/plots/var3_cr_case1.pdf", width = 6)
+     theme(axis.text = element_text(size = 20))
+ggsave("plot/var3_cr.pdf")
 

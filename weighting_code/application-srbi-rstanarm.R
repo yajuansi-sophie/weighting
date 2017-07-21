@@ -1,13 +1,13 @@
 ###---------------MRP to Construct Survey Weights--------------###
-### Author: YS Latest Edit date: 06/07/2017 clear
+### Author: YS Latest Edit date: 07/19/2017 clear
 remove(list = objects())
 
 #----------required packages-----------------#
-require(rstanarm) # requires 'structured_prior_merge' branch
-require(survey)
-require(ggplot2)
+library(rstanarm) # requires 'structured_prior_merge' branch
+library(survey)
+library(ggplot2)
 library(directlabels)
-require(gridExtra)
+library(gridExtra)
 library(xtable)
 library(reshape2)
 library(dplyr)
@@ -141,26 +141,8 @@ fit <-
     adapt_delta = 0.99
   )
 
+
 colnames(as.matrix(fit))
-# [349] "sigma"                                     
-# [350] "Sigma[age:eth:inc:(Intercept),(Intercept)]"
-# [351] "Sigma[age:eth:edu:(Intercept),(Intercept)]"
-# [352] "Sigma[eth:inc:(Intercept),(Intercept)]"    
-# [353] "Sigma[age:inc:(Intercept),(Intercept)]"    
-# [354] "Sigma[age:eth:(Intercept),(Intercept)]"    
-# [355] "Sigma[eth:edu:(Intercept),(Intercept)]"    
-# [356] "Sigma[age:edu:(Intercept),(Intercept)]"    
-# [357] "Sigma[inc:(Intercept),(Intercept)]"        
-# [358] "Sigma[eth:(Intercept),(Intercept)]"        
-# [359] "Sigma[age:(Intercept),(Intercept)]"        
-# [360] "Sigma[edu:(Intercept),(Intercept)]"        
-# [361] "lambda_inter[1]"                           
-# [362] "lambda_inter[2]"                           
-# [363] "sigma_m"                                   
-# [364] "lambda_m[1]"                               
-# [365] "lambda_m[2]"                               
-# [366] "lambda_m[3]"                               
-# [367] "lambda_m[4]"
 
 draws <- as.matrix(fit, pars = c("sigma","lambda_m[1]", "lambda_inter[1]", "sigma_m"))
 
@@ -177,7 +159,7 @@ output <- sum_svey_model(fit, agg_pop)
 mb_out <-
   dat %>%
   select(cell_id, Y) %>%
-  left_join(output$mean_w_new, by = 'cell_id') %>% 
+  left_join(output$mean_w_new, by = 'cell_id') %>%
   mutate(w = w_unit / mean(w_unit),
          Y_w = w * Y)
 
@@ -208,14 +190,14 @@ pop_margins <- list(
   edu = data.frame(edu = 1:J_edu, Freq = as.numeric(svytable( ~ edu, acs_design))),
   inc = data.frame(inc = 1:J_inc, Freq = as.numeric(svytable(~ inc, acs_design)))
 )
-rake_output <- 
+rake_output <-
   rake(
     design = svydesign(id = ~ 1, data = dat),
     sample.margins = list( ~ age, ~ eth, ~ edu, ~ inc),
     population.margins = pop_margins,
     control = list(maxit = 10, epsilon = 1, verbose = FALSE)
   )
-w_rake_df <- 
+w_rake_df <-
   data.frame(
     w = weights(rake_output)/mean(weights(rake_output)),
     Y = dat$Y,
@@ -235,21 +217,21 @@ w_ps <- w_ps_df$w
 n <- nrow(dat)
 
 # log-weights distributions
-log_weights_plot <- 
+log_weights_plot <-
   data.frame(
-    wt = log(c(w_unit, w_rake, w_ps)), 
-    method = factor(rep(c("Str-W", "Rake-W", "PS-W"), each = n), 
+    wt = log(c(w_unit, w_rake, w_ps)),
+    method = factor(rep(c("Str-W", "Rake-W", "PS-W"), each = n),
                     levels = c("Str-W", "Rake-W", "PS-W"))
   ) %>%
-  ggplot(aes(x = wt, group = method)) + 
-  geom_density(aes(color = method)) + 
-  scale_x_continuous(name = "Distributions of log(weights) in the LSW") + 
-  scale_y_continuous(name = "",limits = c(0, 1.6)) + 
+  ggplot(aes(x = wt, group = method)) +
+  geom_density(aes(color = method)) +
+  scale_x_continuous(name = "Distributions of log(weights) in the LSW") +
+  scale_y_continuous(name = "",limits = c(0, 1.6)) +
   coord_cartesian(expand = FALSE) +
   bayesplot::theme_default() +
   theme(axis.line.y = element_blank())+
-  bayesplot::xaxis_text(size = 14) +
-  bayesplot::xaxis_title(size = 16) +
+  bayesplot::xaxis_text(size = 20) +
+  bayesplot::xaxis_title(size = 28) +
   bayesplot::yaxis_text(FALSE) +
   bayesplot::yaxis_title(FALSE)
 direct.label(log_weights_plot)
@@ -259,29 +241,29 @@ ggsave("plot/weight-lsw.pdf")
 
 # Weighted distribution of life satisfaction score in the LSW
 data.frame(
-  wt = c(w_unit/sum(w_unit), w_rake/sum(w_rake), w_ps/sum(w_ps), rep(1/n, n)), 
+  wt = c(w_unit/sum(w_unit), w_rake/sum(w_rake), w_ps/sum(w_ps), rep(1/n, n)),
   method = factor(rep(c("Str-W", "Rake-W", "PS-W", "Sample"), each = n),
                   levels = c("Str-W", "Rake-W", "PS-W", "Sample")),
   Y = dat$Y
 ) %>%
-  ggplot(aes(x = Y, weights = wt, group = method)) + 
+  ggplot(aes(x = Y, weights = wt, group = method)) +
   stat_density(
-    aes(color = method), 
-    size = 1/3, 
-    geom = "line", 
+    aes(color = method),
+    size = 1/3,
+    geom = "line",
     position = "identity"
   ) +
   scale_color_discrete("") +
   labs(x = "Weighted distribution of life satisfaction score in the LSW", y = NULL) +
   scale_y_continuous(expand = c(0, 0))+
   #coord_cartesian(expand = FALSE) +
-  bayesplot::theme_default() + 
-  theme(axis.line.y = element_blank(),axis.ticks = element_blank(),legend.position = c(0.2,0.75))+
-  bayesplot::xaxis_text(size = 14) +
-  bayesplot::xaxis_title(size = 16) +
+  bayesplot::theme_default() +
+  theme(axis.line.y = element_blank(),axis.ticks = element_blank(),legend.position = c(0.2,0.75),legend.text = element_text(size = 20))+
+  bayesplot::xaxis_text(size = 20) +
+  bayesplot::xaxis_title(size = 28) +
   bayesplot::yaxis_text(FALSE) +
   bayesplot::yaxis_title(FALSE)
-  
+
 ggsave("plot/weighted-lsw-density.pdf")
 
 
@@ -311,49 +293,49 @@ over_mean_wgt <-
       max(w_ps) / min(w_ps),
       sum(w_ps * dat$Y) / sum(w_ps),
       sqrt(sum(w_ps ^ 2 * var(dat$Y))) / n
-    ), 
+    ),
     row.names = c("SD.W", "Max/Min.W", "Est", "SE")
   )
 print(xtable(over_mean_wgt, digits = 2))
 
 ### marginal means sub domain
 l_v <- c(0, J_age, J_eth, J_edu, J_inc)
-est_sub_st <- 
-  sd_sub_st <- 
-  est_sub_st_wt <- 
-  sd_sub_st_wt <- 
-  est_sub_st_wt2 <- 
-  sd_sub_st_wt2 <- 
-  est_sub_ps_wt <- 
-  sd_sub_ps_wt <- 
-  est_sub_ips_wt <- 
-  sd_sub_ips_wt <- 
-  est_sub_rake_wt <- 
+est_sub_st <-
+  sd_sub_st <-
+  est_sub_st_wt <-
+  sd_sub_st_wt <-
+  est_sub_st_wt2 <-
+  sd_sub_st_wt2 <-
+  est_sub_ps_wt <-
+  sd_sub_ps_wt <-
+  est_sub_ips_wt <-
+  sd_sub_ips_wt <-
+  est_sub_rake_wt <-
   sd_sub_rake_wt <- rep(0, sum(l_v))
 
 cell_str <- agg_pop[, c('age','eth','edu','inc')]
 for (v in 1:ncol(cell_str)) {
   for (l in 1:l_v[v + 1]) {
-    sub_pop_data <- 
-      agg_pop %>% 
-      filter(cell_str[, v] == l) %>% 
+    sub_pop_data <-
+      agg_pop %>%
+      filter(cell_str[, v] == l) %>%
       select(cell_id, N) %>%
       mutate(p = N / sum(N))
-    
+
     st_est_sm <- output$mu_cell_pred[, sub_pop_data$cell_id] %*% sub_pop_data$p
     est_sub_st[l + sum(l_v[1:v])] <- mean(st_est_sm)
     sd_sub_st[l + sum(l_v[1:v])] <- sd(st_est_sm)
-    
+
     # model-based weights under st prior
     w_sum <- sum_weights(weight_df = mb_out, idx = sub_pop_data$cell_id, comp_stat = 0)
     est_sub_st_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
     sd_sub_st_wt[l + sum(l_v[1:v])] <- w_sum$sd_wt
-    
+
     # ps weights
     w_sum <- sum_weights(weight_df = w_ps_df, idx = sub_pop_data$cell_id, comp_stat = 0)
     est_sub_ps_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
     sd_sub_ps_wt[l + sum(l_v[1:v])] <- w_sum$sd_wt
-    
+
     # rake weights
     w_sum <- sum_weights(weight_df = w_rake_df, idx = sub_pop_data$cell_id, comp_stat = 0)
     est_sub_rake_wt[l + sum(l_v[1:v])] <- w_sum$est_wt
@@ -363,8 +345,8 @@ for (v in 1:ncol(cell_str)) {
 
 marg_means <- data.frame(
   "Str.P" = c(est_sub_st, sd_sub_st),
-  "Str.W" = c(est_sub_st_wt, sd_sub_st_wt), 
-  "PS" = c(est_sub_ps_wt, sd_sub_ps_wt), 
+  "Str.W" = c(est_sub_st_wt, sd_sub_st_wt),
+  "PS" = c(est_sub_ps_wt, sd_sub_ps_wt),
   "Raking" = c(est_sub_rake_wt, sd_sub_rake_wt)
 )
 
@@ -375,8 +357,8 @@ quant_nms <-
     "age:45-54",
     "age:55-64",
     "age:65+",
-    "whi&non-Hisp",
-    "blac&non-Hisp",
+    "white&non-Hisp",
+    "black&non-Hisp",
     "Asian",
     "Hisp",
     "other race/eth",
@@ -396,22 +378,23 @@ est_out <- data.frame(quantity = factor(quant_nms, levels = quant_nms),
                       marg_means[1:nquant, ])
 est_out.m <- melt(est_out, id.vars = "quantity")
 
-se_out <- data.frame(quantity = factor(quant_nms, levels = quant_nms), 
+se_out <- data.frame(quantity = factor(quant_nms, levels = quant_nms),
                      marg_means[nquant + 1:nquant, ])
 se_out.m <- melt(se_out, id.vars = "quantity")
 
+theme_set(bayesplot::theme_default(base_family = "sans"))
+
 (plot1 <-
-  ggplot(est_out.m, aes(variable, quantity)) + 
-  geom_tile(aes(fill = value), colour = "white") + 
-  scale_fill_gradient(name = "Est", low = "white", high = "slategrey") + 
-  labs(x = "", y = "") +coord_cartesian(expand = FALSE) + 
-  bayesplot::theme_default() + 
+  ggplot(est_out.m, aes(variable, quantity)) +
+  geom_tile(aes(fill = value), colour = "white") +
+  scale_fill_gradient(name = "Est", low = "white", high = "slategrey") +
+  labs(x = "", y = "") +coord_cartesian(expand = FALSE) +
   theme(
     axis.line = element_line(colour = "black"),
-    axis.text = element_text(size = 12)
+    axis.text = element_text(size = 20)
   )
 )
-ggsave("plot/lsw_mar_est.pdf", width = 5)
+ggsave("plot/lsw_mar_est.pdf")
 
 (
   plot2 <-
@@ -419,16 +402,12 @@ ggsave("plot/lsw_mar_est.pdf", width = 5)
     geom_tile(aes(fill = value), colour = "white") +
     scale_fill_gradient(name = "SE", low = "white", high = "steelblue") +
     labs(x = "", y = "") +coord_cartesian(expand = FALSE) +
-    bayesplot::theme_default() + 
     theme(
       axis.line = element_line(colour = "black"),
-      axis.text = element_text(size = 12)
+      axis.text = element_text(size = 20)
     )
 )
-ggsave("plot/lsw_mar_se.pdf", width = 5)
-
-
-
+ggsave("plot/lsw_mar_se.pdf")
 
 ###-----------interaction---------------###
 
@@ -499,7 +478,7 @@ w_sum_rake <-
   sum_weights(weight_df = w_rake_df,
               idx = sub_cell_idx$cell_id,
               comp_stat = 0)
-est_sub_rake_wt_int <- w_sum_rake$est_wt 
+est_sub_rake_wt_int <- w_sum_rake$est_wt
 sd_sub_rake_wt_int <- w_sum_rake$sd_wt
 
 int_wgt_mean <-
@@ -592,9 +571,9 @@ samp_tab_rake <- svytable( ~ inc + age + edu+ eth, rake_design) / n
 print(
   xtable(
     cbind(
-      "Model-based" = sqrt(sum((pop_tab - samp_tab_mb) ^ 2)), 
-      "PS" = sqrt(sum((pop_tab - samp_tab_ps) ^ 2)), 
+      "Model-based" = sqrt(sum((pop_tab - samp_tab_mb) ^ 2)),
+      "PS" = sqrt(sum((pop_tab - samp_tab_ps) ^ 2)),
       "Raking" = sqrt(sum((pop_tab - samp_tab_rake) ^ 2))
-    ), 
+    ),
     digits = 2)
 )
