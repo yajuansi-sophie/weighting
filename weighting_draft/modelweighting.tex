@@ -209,16 +209,15 @@ variable are also likely to be not predictive, to facilitate model
 interpretation.
 
 We have implemented the computation in the R package {\tt
-rstanarm}~\citep{rstanarm} released on CRAN. The fully Bayesian inference is
-realized via Stan~\citep{stan-software:2013,stan-manual:2013}, which uses
-Hamiltonian Monte Carlo sampling with adaptive path
-lengths~\citep{hoffman-gelman:2012}.  Stan promotes robust model-based
-approaches by reducing the computational burden of building and testing new
-models. The {\tt rstanarm} package allows for efficient Bayesian hierarchical
-modeling and weighting inference. The codes are publicly available and
-reproducible. Our developed computation software provide the accessible
-platform and has the potential to support the unified framework for survey
-inference.
+rstanarm}~\citep{rstanarm}. The fully Bayesian inference is realized via
+Stan~\citep{stan-software:2013,stan-manual:2013}, which uses Hamiltonian Monte
+Carlo sampling with adaptive path lengths~\citep{hoffman-gelman:2012}.  Stan
+promotes robust model-based approaches by reducing the computational burden of
+building and testing new models. The {\tt rstanarm} package allows for
+efficient Bayesian hierarchical modeling and weighting inference. The codes are
+publicly available and reproducible. Our developed computation software provide
+the accessible platform and has the potential to support the unified framework
+for survey inference.
 
 Section~\ref{problem} introduces the motivating problem of weighting for an
 ongoing social science survey. We discuss the method in detail
@@ -505,19 +504,19 @@ men, and college educated, respectively.
 We use the following hyperpriors on the scale parameters: \begin{align}
   \label{main} \nonumber  \mbox{error scale: }&\sigma \sim
   \textrm{Cauchy}_{+}(0,1) \\ \nonumber \mbox{local scale for main effects: } &
-  \lambda_k^{(1)} \sim  \textrm{N}_{+}(0,1)\\ \mbox{local scale for high-order
-  interactions: } & \lambda^{(l)}_k=\delta^{(l)}\prod_{l_0\in
-  M^{(k)}}\lambda^{(1)}_{l_0} \\ \nonumber  \mbox{relative magnitude for
-  high-order interactions: }&\delta^{(l)}  \sim   \textrm{N}_{+}(0,1) \mbox{,
-  for } l=2,\dots, q.  \end{align} Here $\textrm{Cauchy}_{+}$ and
-  $\textrm{N}_{+}$ denotes the positive part of the Cauchy and normal
-  distributions, respectively.  \cite{gelman06-prior} proposes the half-Cauchy
-  prior for the scale parameter in hierarchical models, which has the appealing
-  property that it allows scale values arbitrarily close to 0, with heavy tails
-  allowing large values when supported by the data. When $\lambda_k^{(l)}$ is
-  close to 0, the posterior samples of $\alpha_{j,k}^{(l)}$ are shrunk towards
-  0. The scale parameter for the high-order interaction terms will be 0 if any
-  of the related scale parameters for the main effects is 0. The overall
+  \lambda_k^{(1)} \sim  \textrm{N}_{+}(0,1)\\ \nonumber	 \mbox{local scale for
+  high-order interactions: } & \lambda^{(l)}_k=\delta^{(l)}\prod_{l_0\in
+  M^{(k)}}\lambda^{(1)}_{l_0} \\ \mbox{relative magnitude for high-order
+  interactions: }&\delta^{(l)}  \sim   \textrm{N}_{+}(0,1) \mbox{, for }
+  l=2,\dots, q.  \end{align} Here $\textrm{Cauchy}_{+}$ and $\textrm{N}_{+}$
+  denotes the positive part of the Cauchy and normal distributions,
+  respectively.  \cite{gelman06-prior} proposes the half-Cauchy prior for the
+  scale parameter in hierarchical models, which has the appealing property that
+  it allows scale values arbitrarily close to 0, with heavy tails allowing
+  large values when supported by the data. When $\lambda_k^{(l)}$ is close to
+  0, the posterior samples of $\alpha_{j,k}^{(l)}$ are shrunk towards 0. The
+  scale parameter for the high-order interaction terms will be 0 if any of the
+  related scale parameters for the main effects is 0. The overall
   regularization effect is determined by the error scale and the multiplicative
   scale parameters of the corresponding main effects. We assign a
   noninformative prior distribution to the intercept term and weakly
@@ -538,52 +537,52 @@ computation efficiency. When the posterior estimation of the scale parameter is
 close to 0, indicating the variable is not predictive; post-processing can be
 done to exclude the variable from poststratification cell construction for
 dimension reduction. This class of priors allows for variable selection in high
-dimension and keeps the hierarchy structure among main effects and
+dimension and keeps the hierarchical structure among main effects and
 interactions.
  
 \subsection{Model-based weights}
 
-We can re-express the models~\eqref{regression} and~\eqref{main} as the
-exchangeable normal model:	\begin{align} \label{theta-summary} \theta_j \sim
-  N(\alpha_0, \sigma^2_{\theta})\mbox{, } \ \
-  \sigma^2_{\theta}=\sum_{l=1}^q\sum_{k\in S^{(l)}}(\lambda_k^{(l)}\sigma)^2.
-  \end{align} Conditional on the variance parameters, the posterior mean in the
-  normal model with normal prior distribution is a linear function of data;
-  thus we can determine {\em equivalent weights} $w^*_i$'s so that one can
-  re-express the smoothed estimate $\sum_{j=1}^JN_j/N\tilde{\theta}_j$ as a
-  classical weighted average, $\sum_{i=1}^n w^*_iy_i/\sum_{i=1}^n w^*_i$.
-  Combining the posterior mean estimates for $\theta_j$ and the model-based
-  estimate given in Model~\eqref{model-based}, \cite{gelman07} derives the
-  equivalent unit weights in cell $j$ that can be used classically.
-  \begin{align} \label{model-w} w_j\approx
-  \frac{n_j/\sigma^2_y}{n_j/\sigma^2_y+1/\sigma_{\theta}^2}\cdot\frac{N_j/N}{n_j/n}
-  +  \frac{1/\sigma^2_{\theta}}{n_j/	\sigma^2_y+1/\sigma_{\theta}^2} \cdot 1,
-  \end{align} where the model-based weight is a weighted average between full
-  poststratification weight without pooling (equal to $(N_j/N)/(n_j/n)$) and
-  completely smoothing weight (equal to 1). The shrinkage effect is quantified
-  as $1/(n_j\sigma^2_{\theta}/	\sigma^2_y	+1)$, where depends on the group
-  and individual variances, as well as sample cell sizes. The model-based
-  weights are random variables, and fully Bayesian inference will propagate the
-  corresponding variability. We collect the posterior mean values and treat as
-  the weights that can be used the same as classical weights.
+We can re-express \eqref{regression} and~\eqref{main} as the exchangeable
+normal model:	\begin{align} \label{theta-summary} \theta_j \sim N(\alpha_0,
+  \sigma^2_{\theta})\mbox{, } \ \ \sigma^2_{\theta}=\sum_{l=1}^q\sum_{k\in
+  S^{(l)}}(\lambda_k^{(l)}\sigma)^2.  \end{align} Conditional on the variance
+  parameters, the posterior mean in the normal model with normal prior
+  distribution is a linear function of data; thus we can determine {\em
+  equivalent weights} $w^*_i$'s so that one can re-express the smoothed
+  estimate $\sum_{j=1}^JN_j/N\tilde{\theta}_j$ as a classical weighted average,
+  $\sum_{i=1}^n w^*_iy_i/\sum_{i=1}^n w^*_i$. Combining the posterior mean
+  estimates for $\theta_j$ and the model-based estimate given in
+  Model~\eqref{model-based}, \cite{gelman07} derives the equivalent unit
+  weights in cell $j$ that can be used classically.  \begin{align}
+    \label{model-w} w_j\approx
+    \frac{n_j/\sigma^2_y}{n_j/\sigma^2_y+1/\sigma_{\theta}^2}\cdot\frac{N_j/N}{n_j/n}
+    +  \frac{1/\sigma^2_{\theta}}{n_j/	\sigma^2_y+1/\sigma_{\theta}^2} \cdot
+    1, \end{align} where the model-based weight is a weighted average between
+    full poststratification without pooling (weights of $(N_j/N)/(n_j/n)$) and
+    complete pooling (weights equal to 1). The pooling factor is $1/(1 +
+    n_j\sigma^2_{\theta}/	\sigma^2_y)$, which depends on the group and
+    individual variances as well as sample size in the cell. The model-based
+    weights are random variables, and fully Bayesian inference will propagate
+    the corresponding variability. We collect the posterior mean values and
+    treat as the weights that can be used the same as classical weights.
 
 \subsection{Computation}
 
 The Bayesian hierarchical prediction and weighting inference procedure is
 reproducible and scalable. We implement the proposed structured prior
-distributions in the open source R package {\tt rstanarm}~\citep{rstanarm}
-released on CRAN. The computation codes are available online~\citep{code:si}
-for public use. We present the example code for the real data application in
-Appendix~\ref{code} to demonstrate the user-friendly and efficient computation
-interface, where survey practitioners can straightforwardly use and adapt. The
-fully Bayesian inference is realized via Stan. As open source and user friendly
-software, Stan contributes to the wide application of Bayesian modeling. Survey
-practitioners resist model-based approaches mainly due to computation burden.
-However, model-based methods are ready to face the new challenges on big survey
-data, such as unbalanced cell structure, combining multiple surveys and
-analyzing streaming data. The development of Stan can improve the
-generalization of model-based approach and provide the computational platform
-for the unified survey inference framework.
+distributions in the open source R package {\tt rstanarm}~\citep{rstanarm}. The
+computation codes are available online~\citep{code:si} for public use. We
+present the example code for the real data application in Appendix~\ref{code}
+to demonstrate the user-friendly and efficient computation interface, where
+survey practitioners can straightforwardly use and adapt. The fully Bayesian
+inference is realized via Stan. As open source and user friendly software, Stan
+contributes to the wide application of Bayesian modeling. Survey practitioners
+resist model-based approaches mainly due to computation burden. However,
+model-based methods are ready to face the new challenges on big survey data,
+such as unbalanced cell structure, combining multiple surveys and analyzing
+streaming data. The development of Stan can improve the generalization of
+model-based approach and provide the computational platform for the unified
+survey inference framework.
 
 In our implementation, the Markov chain Monte Carlo samples mix well and the
 chains converge quickly. The fast computation speed widens the usability of
@@ -988,18 +987,20 @@ weighting adjustment balances the discrepancy.
   model-based weighting under structured prior; Rake-W: weighting via raking
   adjustment; and PS-W: poststratification weighting. } \label{lsw-est} \small
   \begin{tabular}{lllll} & Str-P & Str-W & Rake-W & PS-W \\ \hline SD of
-  weights / mean of weights & & 0.32 & 0.66 & 0.80 \\ Max weight / min weight &
-  & 3.87 & 81.28 & 274.65 \\ \hline \multicolumn{5}{l}{Overall average for NYC
-  adults ($n=2002$)}\\ Est & 7.24 & 7.23 & 7.24 & 7.30 \\ SE & 0.05 & 0.05 &
-  0.05 & 0.06\\ \hline \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Average for
-  middle-aged, college-educated whites with poverty gap $> 300\%$
-  ($n=222$)\end{tabular}}\\ Est & 7.40 & 7.34 & 7.34 & 7.34\\ SE & 0.10 & 0.11
-  & 0.11 & 0.11 \\ \hline \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Average
-  for elders with poverty gap $< 200\%$ ($n=154$)\end{tabular}}\\ Est & 7.37 &
-  7.52 & 7.49 & 7.53 \\ SE & 0.15 & 0.18 & 0.19 & 0.22 \\ \hline
-  \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Averages for blacks with poverty
-  gap $< 50\%$ ($n=57$)\end{tabular}}\\ Est & 7.01 & 7.16 & 7.30 & 7.16 \\ SE &
-  0.18 & 0.26 & 0.28 & 0.29 \end{tabular} \end{table}
+    weights / mean of weights & & 0.32 & 0.66 & 0.80 \\ Max weight / min weight
+    &  & 3.87 & 81.28 & 274.65 \\ \hline \multicolumn{5}{l}{Overall average for
+    NYC adults ($n=2002$)}\\ Est & 7.24 & 7.23 & 7.24 & 7.30 \\ SE & 0.05 &
+    0.05 & 0.05 & 0.06\\ \hline
+    \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Average for middle-aged,
+      college-educated whites with poverty gap $> 300\%$
+    ($n=222$)\end{tabular}}\\ Est & 7.40 & 7.34 & 7.34 & 7.34\\ SE & 0.10 &
+    0.11 & 0.11 & 0.11 \\ \hline
+    \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Average for elders with poverty
+      gap $< 200\%$ ($n=154$)\end{tabular}}\\ Est & 7.37 & 7.52 & 7.49 & 7.53
+      \\ SE & 0.15 & 0.18 & 0.19 & 0.22 \\ \hline
+      \multicolumn{5}{l}{\begin{tabular}{@{}l@{}}Averages for blacks with
+        poverty gap $< 50\%$ ($n=57$)\end{tabular}}\\ Est & 7.01 & 7.16 & 7.30
+  & 7.16 \\ SE & 0.18 & 0.26 & 0.28 & 0.29 \end{tabular} \end{table}
 
 
 Table~\ref{lsw-est} and Figure~\ref{lsw-mar} present the finite population and
@@ -1040,13 +1041,13 @@ The SEs are similar for the overall mean estimation between predictions and
  \begin{figure} \centering \begin{tabular}{cc}
  \includegraphics[width=.475\textwidth]{plot/lsw_mar_est.pdf}&\includegraphics[width=.475\textwidth]{plot/lsw_mar_se.pdf}
  \end{tabular} \caption{\em Comparison of predictions and weighting
- performances on estimating life satisfaction score across the margins of four
- weighting variables in the LSW. Str-P: model-based prediction under the
- structured prior; Str-W: model-based weighting under structured prior; Rake-W:
- weighting via raking adjustment; and PS-W: poststratification weighting.
- Model-based predictions and weighting generate different estimates for several
- subsets and are generally more efficient comparing with classical weighting.}
- \label{lsw-mar} \end{figure} 
+  performances on estimating life satisfaction score across the margins of four
+  weighting variables in the LSW. Str-P: model-based prediction under the
+  structured prior; Str-W: model-based weighting under structured prior;
+  Rake-W: weighting via raking adjustment; and PS-W: poststratification
+  weighting. Model-based predictions and weighting generate different estimates
+  for several subsets and are generally more efficient comparing with classical
+  weighting.} \label{lsw-mar} \end{figure} 
 
 
 Survey practitioners often compare the weighted distribution of
@@ -1159,7 +1160,9 @@ Sciences, and Sloan Foundation for grant support.
 
 \section{Example code}
 \label{code}
-Here we present the example code of the application study to illustrate the practical implementation of our proposed model-based predictions and weighting inference.
+Here we present code for the application described in the data.
+
+\begin{small}
 \begin{verbatim}
 # prepare data to pass to rstanarm
 # SURVEYdata has 4 weighting variables: age, eth, edu and inc; and outcome Y
@@ -1235,6 +1238,7 @@ mb_out <-
 mean(mb_out$Y_w) # mean estimate
 mb_out$w # model-based weights
 \end{verbatim}
+\end{small}
 
 \pagebreak
 
