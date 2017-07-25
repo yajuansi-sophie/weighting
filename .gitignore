@@ -1,11 +1,9 @@
-.Rdata
-.Rhistory
 literature/
 output/
 plot/
 stan/*.rda
-.DS_Store
-.Rproj.user
-.Rhistory
 
+.DS_Store
+.Rdata
+.Rproj.user
 .Rhistory
