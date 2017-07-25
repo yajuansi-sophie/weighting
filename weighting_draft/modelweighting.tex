@@ -58,7 +58,7 @@
 \title{\bf Bayesian hierarchical weighting adjustment and survey
 inference\vspace{.1in}} \author{Yajuan Si\footnote{University of Michigan and
 University of Wisconsin-Madison, corresponding author; yajuan@umich.edu},  Rob
-Trangucci\footnote{Columbia University}, Jonah Sol Gabry\footnote{Columbia
+Trangucci\footnote{University of Michigan}, Jonah Sol Gabry\footnote{Columbia
 University}, and Andrew Gelman\footnote{Columbia University}\vspace{.1in}}
 \date{24 July 2017}
  
@@ -303,20 +303,20 @@ joint distribution of these weighting related variables. However, small cell
 sizes or empty under the deep interactions will lead to extremely large weights
 that need cell collapsing. 
 	
-The problems about classical weighting faced by the LSW baseline survey are
-general enough that they occur for most operational weighting practice in
-real-life surveys, which could be complicated with complex design, longitudinal
-structure or multi-stage response mechanisms. Usually different weighting
-practitioners generate different weights and then weighted analyses, causing
-weighting a mess. It is important to propose a model-based weighting procedure
-that allows the data to select weighting factors without arbitrary choices and
-facilitates domain estimates. We would like to incorporate these weighting
-variables into the model for survey outcomes for efficiency gains, model their
-high-order interaction terms under regularized prior setting and generate the
-weights that can be equally treated as classical weights. Large number of
-weighting variables and deep interactions will cause small weighting cells
-based on the cross-tabulation. The small weighting cells call for statistical
-adjustment for smoothness and stability. 
+The problems we face with classical weighting for the LSW baseline survey are
+reflective of problems researchers face with real-life surveys, which are often
+complicated with complex designs, longitudinal structure or multi-stage
+response mechanisms. The ad-hoc decisions that often go into classical
+weighting schemes can result in different practitioners generating different
+sets of weights for the same survey. In order to avoid the need for
+subjectivity it is important to propose a model-based weighting procedure that
+allows the data to select weighting factors. We would like to incorporate these
+weighting variables into the model for survey outcomes for efficiency gains,
+model their high-order interaction terms under regularized prior setting and
+generate the weights that can be equally treated as classical weights. Large
+number of weighting variables and deep interactions will cause small weighting
+cells based on the cross-tabulation. The small weighting cells call for
+statistical adjustment for smoothness and stability. 
 		
 MRP have achieved success for domain estimation at much finer levels. Borrowing
 the strength of hierarchical modeling framework with informative prior
@@ -335,8 +335,8 @@ we are interested in estimating the population distribution of the survey
 outcome $y$. When the weighting process is transparent, we can directly include
 the weighting variable $X$ into regression modeling for the survey outcome $y$.
 Here $X$ is a $q$-dimensional vector of variables that affect the sampling
-design, nonresponse and coverage. Conditional on $X$, the distribution of
-inclusion indicator $I$ is ignorable. Under MRP, the weighting variables $X$
+design, nonresponse and coverage.  Conditional on $X$, the distribution of
+inclusion indicator $I$ is ignorable.  Under MRP, the weighting variables $X$
 are discretized, and their cross-tabulation constructs the poststratification
 cells $j$, with population cell sizes $N_j$ and sample cell sizes $n_j$, where
 $J$ is the total number of poststratification cells \citep{little91, little93,
@@ -454,17 +454,17 @@ variables, we can express the population cell mean $\theta_j$ as \begin{align}
   \label{regression} \theta_j=\alpha_0 + \sum_{k\in
   S^{(1)}}\alpha_{j,k}^{(1)}+\sum_{k\in
   S^{(2)}}\alpha_{j,k}^{(2)}+\dots+\sum_{k\in S^{(q)}}\alpha_{j,k}^{(q)},
-  \end{align} where $S^{(l)}$ is the set of all possible $l$-way interaction
-  terms, and $\alpha^{(l)}_{j,k}$ represents the $k$th of the $l$-way
-  interaction terms in the set $S^{(l)}$ for cell $j$. For example,
-  $\alpha^{(1)}_{j,k}$'s with $k\in S^{(1)}$ refer to the main effects,
-  $\alpha^{(2)}_{j,k}$'s with $k\in S^{(2)}$ being the two-way interaction
-  terms, for cell $j$. This decomposition covers all possible interactions
-  among the $q$ weighting variables. When the cell structure is sparse,
-  variable selection is necessary. In practical application, we recommend the
-  initial inclusion of covariates and interactions with substantive importance
-  and scientific interest in Model \eqref{regression} and perform Bayesian
-  variable selection under the proposed structured prior setting.
+\end{align} where $S^{(l)}$ is the set of all possible $l$-way interaction
+terms, and $\alpha^{(l)}_{j,k}$ represents the $k$th of the $l$-way interaction
+terms in the set $S^{(l)}$ for cell $j$. For example, $\alpha^{(1)}_{j,k}$'s
+with $k\in S^{(1)}$ refer to the main effects, $\alpha^{(2)}_{j,k}$'s with
+$k\in S^{(2)}$ being the two-way interaction terms, for cell $j$. This
+decomposition covers all possible interactions among the $q$ weighting
+variables. When the cell structure is sparse, variable selection is necessary.
+In practical application, we recommend the initial inclusion of covariates and
+interactions with substantive importance and scientific interest in Model
+\eqref{regression} and perform Bayesian variable selection under the proposed
+structured prior setting.
 
 We induce structured prior distributions to be able to handle deep interactions
 and account for their hierarchy structure, where the high-order interaction
@@ -522,7 +522,6 @@ We use the following hyperpriors on the scale parameters: \begin{align}
   noninformative prior distribution to the intercept term and weakly
   informative prior distributions to the two global error scale parameters
   $(\sigma_y, \sigma)$, where $\sigma_y\sim \textrm{Cauchy}_{+}(0,5)$.
-
 
 Our proposed prior specification features the group selection of all possible
 level indicators for the same variable, similar to the group
@@ -1014,7 +1013,7 @@ Table~\ref{lsw-est} and Figure~\ref{lsw-mar} present the finite population and
   as 7.40 with standard error 0.10, higher than that under weighting
   inferences. Nevertheless, the predicted scores for elder with relatively low
   income (7.37 with SE 0.15) and low-income black New Yorkers (7.01 with SE
-  0.18) are lower than those under weighting inferences. The discrepancy could
+  0.18) are lower than those under weighting inferences.  The discrepancy could
   be explained by the nonrepresentativeness of the LSW and the deep
   interactions included by the model. The subgroup of individuals who are
   middle-aged, college-educated whites may be undercovered in the LSW---as
@@ -1169,24 +1168,17 @@ Here we present code for the application described in the data.
 dat_rstanarm <-
   SURVEYdata %>%
   mutate(
-    cell_id = paste0(age, eth, edu, inc),
-    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + 
-      (as.integer(edu) - 1) * J_eth * J_age + 
-      (as.integer(eth) - 1) * J_age + 
-      as.integer(age)
+    cell_id = paste0(age, eth, edu, inc)
   )%>% 
-  arrange(j)%>%
   group_by(age, eth, edu, inc) %>%
   summarise(
     sd_cell = sd(Y),
     n = n(),
     Y = mean(Y),
     cell_id = first(cell_id),
-    j = first(j)
   ) %>%
   mutate(sd_cell = if_else(is.na(sd_cell), 0, sd_cell)) %>%
-  left_join(agg_pop[, c('cell_id', 'N')], by = 'cell_id') %>%
-  arrange(j)
+  left_join(agg_pop[, c('cell_id', 'N')], by = 'cell_id')
 # prepare population data: acs_ad has age, eth, edu and inc
 acs_ad %>% 
   mutate(
@@ -1198,14 +1190,9 @@ agg_pop <-
   as.data.frame() %>%
   rename(N = Freq) %>%
   mutate(
-    cell_id = paste0(age, eth, edu, inc), 
-    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + 
-      (as.integer(edu) - 1) * J_eth * J_age + 
-      (as.integer(eth) - 1) * J_age + 
-      as.integer(age)
+    cell_id = paste0(age, eth, edu, inc) 
   ) %>%
-  filter(cell_id %in% acs_ad$cell_id) %>%
-  arrange(j)
+  filter(cell_id %in% acs_ad$cell_id)
 # Stan fitting under structured prior in rstanarm
 fit <-
   stan_glmer(
@@ -1226,7 +1213,6 @@ fit <-
     prior_intercept = normal(0, 100, autoscale = FALSE), 
     adapt_delta = 0.99
   )
-colnames(as.matrix(fit)) #variables in the output
 output <- sum_svey_model(fit, agg_pop)
 # model-based weighting
 mb_out <-
