@@ -9,12 +9,6 @@ library(ggplot2)
 library(dplyr)
 library(directlabels)
 
-if (!require(devtools)) {
-  install.packages("devtools")
-  library(devtools)
-}
-install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
-
 set.seed(20150213)
 
 source('helper_functions.R')

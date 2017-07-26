@@ -9,12 +9,6 @@ library(ggplot2)
 library(dplyr)
 library(directlabels)
 
-if (!require(devtools)) {
-  install.packages("devtools")
-  library(devtools)
-}
-install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
-
 set.seed(20150213)
 
 source('helper_functions.R')
@@ -165,15 +159,7 @@ J_ps <- length(unique(acs_ad$ps))
 
 acs_ad %>% 
   mutate(
-    pop_cell_id =  paste0(age, eth, edu, sex, inc, eld, cld, ps),
-    j = (ps_int - 1) * J_cld * J_eld * J_inc * J_sex * J_edu * J_eth * J_age +
-        (cld_int - 1) * J_eld * J_inc * J_sex * J_edu * J_eth * J_age +
-        (eld_int - 1) * J_inc * J_sex * J_edu * J_eth * J_age + 
-        (inc_int - 1) * J_sex * J_edu * J_eth * J_age +
-        (sex_int - 1) * J_edu * J_eth * J_age +
-        (edu_int - 1) * J_eth * J_age +
-        (eth_int - 1) * J_age +
-        age_int
+    pop_cell_id =  paste0(age, eth, edu, sex, inc, eld, cld, ps)
   ) -> acs_ad
 
 pop_cell_id <- acs_ad$pop_cell_id
@@ -190,8 +176,7 @@ agg_pop <- acs_ad %>%
   summarise(
     N = n(),
     Y = mean(Y),
-    cell_id = first(pop_cell_id),
-    j = first(j)
+    cell_id = first(pop_cell_id)
   ) %>%
   ungroup()
 
@@ -202,7 +187,7 @@ dat <-
   acs_ad[I,, drop=FALSE] %>% 
   select(
     age, eth, edu, sex,
-    inc, eld, cld, ps, j 
+    inc, eld, cld, ps 
   ) %>%
   mutate(
     Y = Y[I], 
@@ -218,8 +203,7 @@ dat_rstanarm <- dat %>%
     sd_cell = sd(Y),
     n = n(),
     Y = mean(Y),
-    cell_id = first(cell_id),
-    j = first(j)
+    cell_id = first(cell_id)
   ) %>%
   mutate(
     sd_cell = if_else(is.na(sd_cell), 0, sd_cell)
@@ -244,7 +228,7 @@ stan_glmer(
   data = dat_rstanarm,
   iter = 500,
   chains = 4,
-  cores = 1,
+  cores = 4,
   prior_covariance = 
     mrp_structured(
       cell_size = dat_rstanarm$n, 
@@ -258,26 +242,6 @@ stan_glmer(
   adapt_delta = 0.99
 )
 
-
-
-colnames(as.matrix(S_st))
-
-draws_st <- as.matrix(S_st, pars = colnames(as.matrix(S_st))[403:432])
-
-for (j in 404:413){
-  j <- 416
-j <- j-402 #413
-print(summary(draws_st[,j]))
-}
-plot(draws_st[,j])
-
-quantile(sqrt(pri_var(S_st)$sigma_y_sq),prob=c(0.025,0.5,0.975))
-plot(pri_var(S_st)$sigma_y_sq)
-summary(sqrt(pri_var(S_st)$sigma_theta_sq))
-quantile(sqrt(pri_var(S_st)$sigma_theta_sq),prob=c(0.025,0.5,0.975))
-
-summary(apply(shrinkage_factor(S_st,dat_rstanarm$n),2,median))
-
 output_st <- sum_svey_model(S_st, agg_pop)
 
 ###-----------------STAN with independent prior--------------------------###
@@ -288,7 +252,7 @@ stan_glmer(
   data = dat_rstanarm,
   iter = 500,
   chains = 4,
-  cores = 1,
+  cores = 4,
   prior_covariance = 
     mrp_structured(
       indep = TRUE,
@@ -300,18 +264,6 @@ stan_glmer(
   prior_intercept = normal(0, 100, autoscale = FALSE),
   adapt_delta = 0.99
 )
-
-colnames(as.matrix(S_iid))
-
-draws_iid <- as.matrix(S_iid, pars = colnames(as.matrix(S_iid))[403:421])
-
-for (j in 404:421){
-  j=410
-  j <- j-402 #413
-  print(summary(draws_iid[,j]))
-}
-
-plot(draws_iid[,j])
 
 output_iid <- sum_svey_model(S_iid, agg_pop)
 

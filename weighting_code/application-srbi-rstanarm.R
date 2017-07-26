@@ -13,11 +13,6 @@ library(reshape2)
 library(dplyr)
 library(foreign)
 
-if (!require(devtools)) {
-  install.packages("devtools")
-  library(devtools)
-}
-install_github("stan-dev/rstanarm", args = "--preclean", build_vignettes = FALSE, ref = 'structured_prior_merge')
 set.seed(20150213)
 
 source('helper_functions.R')
@@ -78,27 +73,17 @@ agg_pop <-
   as.data.frame() %>%
   rename(N = Freq) %>%
   mutate(
-    cell_id = paste0(age, eth, edu, inc), 
-    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + 
-          (as.integer(edu) - 1) * J_eth * J_age + 
-            (as.integer(eth) - 1) * J_age + 
-              as.integer(age)
+    cell_id = paste0(age, eth, edu, inc)
   ) %>%
-  filter(cell_id %in% acs_ad$cell_id) %>%
-  arrange(j)
+  filter(cell_id %in% acs_ad$cell_id)
 
 
 ###--------Four variable case: age, race, edu and inc------------###
 dat <-
   SRBIdata %>%
   mutate(
-    cell_id = paste0(age, eth, edu, inc),
-    j = (as.integer(inc) - 1) * J_edu * J_eth * J_age + 
-        (as.integer(edu) - 1) * J_eth * J_age + 
-        (as.integer(eth) - 1) * J_age + 
-         as.integer(age)
-  ) %>%
-  arrange(j)
+    cell_id = paste0(age, eth, edu, inc)
+  )
 
 # prepare data to pass to rstanarm
 dat_rstanarm <-
@@ -108,12 +93,10 @@ dat_rstanarm <-
     sd_cell = sd(Y),
     n = n(),
     Y = mean(Y),
-    cell_id = first(cell_id),
-    j = first(j)
+    cell_id = first(cell_id)
   ) %>%
   mutate(sd_cell = if_else(is.na(sd_cell), 0, sd_cell)) %>%
-  left_join(agg_pop[, c('cell_id', 'N')], by = 'cell_id') %>%
-  arrange(j)
+  left_join(agg_pop[, c('cell_id', 'N')], by = 'cell_id')
 
 
 ###-----------------STAN with structural prior--------------------------###
@@ -141,18 +124,6 @@ fit <-
     adapt_delta = 0.99
   )
 
-
-colnames(as.matrix(fit))
-
-draws <- as.matrix(fit, pars = c("sigma","lambda_m[1]", "lambda_inter[1]", "sigma_m"))
-
-quantile(sqrt(pri_var(fit)$sigma_y_sq),prob=c(0.025,0.5,0.975))
-plot(pri_var(fit)$sigma_y_sq)
-summary(sqrt(pri_var(fit)$sigma_theta_sq))
-quantile(sqrt(pri_var(fit)$sigma_theta_sq),prob=c(0.025,0.5,0.975))
-
-summary(apply(shrinkage_factor(fit,dat_rstanarm$n),2,median))
-
 output <- sum_svey_model(fit, agg_pop)
 
 ###------model-based (mb) weighting------###
@@ -165,7 +136,6 @@ mb_out <-
 
 output$mu_w <- mean(mb_out$Y_w)
 output$w_unit <- mb_out$w
-
 
 mb_design <- svydesign(id = ~ 1, data = dat, weights = output$w_unit)
 svymean(~Y, mb_design)
@@ -207,7 +177,6 @@ w_rake_df <-
 
 rake_design <- svydesign(id = ~1, data = dat, weights = w_rake_df$w)
 svymean(~Y, rake_design)
-
 
 # plots and tables ------------------------------------------------------
 
@@ -265,7 +234,6 @@ data.frame(
   bayesplot::yaxis_title(FALSE)
 
 ggsave("plot/weighted-lsw-density.pdf")
-
 
 # over_mean_wgt
 over_mean_wgt <-
