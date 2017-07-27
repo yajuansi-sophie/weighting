@@ -3,7 +3,8 @@
 library(foreign)
 library(dplyr)
 
-acs_pop <- read.dta("weighting_code/data/acs_nyc_2011_wpov1.dta", convert.factors = FALSE)
+acs_pop <- read.dta("data/acs_nyc_2011_wpov1.dta", 
+                    convert.factors = FALSE)
 
 acs_ad <- 
   acs_pop %>%
@@ -37,5 +38,6 @@ acs_ad <-
   mutate_at(
     .cols = vars(age, eth, edu, sex, inc, eld, cld, ps),
     .funs = funs(int = as.integer(.))
-  ) %>% 
-  saveRDS('weighting_code/data/acs_ad.RDS')
+  )
+  
+saveRDS(acs_ad, file = "data/acs_ad.RDS")

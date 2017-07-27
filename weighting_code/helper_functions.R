@@ -16,7 +16,7 @@ pri_var <- function(object) {
 # @param object stanreg object (fitted rstanarm model)
 # @param ns A vector of "n" (sample cell counts).
 # @return A matrix with number of rows equal to the number of posterior draws 
-#   and number of columns equal to the number of cells, i.e. nrow(cell_table).
+#   and number of columns equal to the number of cells.
 #
 shrinkage_factor <- function(object, ns) {
   var_draws <- pri_var(object)
@@ -27,7 +27,7 @@ shrinkage_factor <- function(object, ns) {
   
   ps_w <- matrix(NA, nrow = length(sigma_y_sq), ncol = J)
   for (j in 1:J) {
-    inv_obs_var_cell = ns[j] / sigma_y_sq 
+    inv_obs_var_cell <- ns[j] / sigma_y_sq 
     ps_w[, j] <- 
       inv_obs_var_cell / (inv_obs_var_cell + inv_sigma_theta_sq)
   }

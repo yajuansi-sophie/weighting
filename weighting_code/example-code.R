@@ -1,4 +1,15 @@
+library(rstanarm)
+library(survey)
+library(dplyr)
+
 ###-----example code-----###
+
+# Compute model-based cell weights
+# 
+# @param object Fitted model object from rstanarm
+# @param cell_table Data frame with columns "N" (pop cell counts) and "n" sample
+#   cell counts
+# 
 model_based_cell_weights <- function(object, cell_table) {
   stopifnot(
     is.data.frame(cell_table),
@@ -23,11 +34,14 @@ model_based_cell_weights <- function(object, cell_table) {
   }
   return(ww)
 }
+
+
 # prepare population data: acs_ad has age, eth, edu and inc
-acs_ad %>% 
-  mutate(
-    cell_id =  paste0(age, eth, edu, inc)
-  ) -> acs_ad
+acs_ad <- readRDS("data/acs_ad.RDS")
+acs_ad <- 
+  acs_ad %>% 
+  mutate(cell_id =  paste0(age, eth, edu, inc))
+
 acs_design <- svydesign(id = ~1, weights = ~perwt, data = acs_ad)
 agg_pop <- 
   svytable( ~ age + eth + edu + inc, acs_design) %>% 
@@ -37,6 +51,7 @@ agg_pop <-
     cell_id = paste0(age, eth, edu, inc) 
   ) %>%
   filter(cell_id %in% acs_ad$cell_id)
+
 # prepare data to pass to rstanarm
 # SURVEYdata has 4 weighting variables: age, eth, edu and inc; and outcome Y
 dat_rstanarm <-
@@ -53,7 +68,13 @@ dat_rstanarm <-
   ) %>%
   mutate(sd_cell = if_else(is.na(sd_cell), 0, sd_cell)) %>%
   left_join(agg_pop[, c("cell_id", "N")], by = "cell_id")
+
 # Stan fitting under structured prior in rstanarm
+#
+# Requires 'structured_prior_merge' of rstanarm. See the README
+# at https://github.com/yajuansi-sophie/weighting for installation
+# instructions.
+# 
 fit <-
   stan_glmer(
     formula = 
@@ -72,17 +93,24 @@ fit <-
     seed = 123,
     prior_aux = cauchy(0, 5),
     prior_intercept = normal(0, 100, autoscale = FALSE), 
-    adapt_delta = 0.99
+    adapt_delta = 0.99,
+    iter = 100, chains = 2
   )
+
 # model-based weighting
 cell_table <- fit$data[,c("N","n")]
 weights <- model_based_cell_weights(fit, cell_table)
-weights <- data.frame(w_unit = colMeans(weights),
-                      cell_id = fit$data[["cell_id"]],
-                      Y = fit$data[["Y"]],
-                      n = fit$data[["n"]]) %>%
+weights <- 
+  data.frame(
+    w_unit = colMeans(weights),
+    cell_id = fit$data[["cell_id"]],
+    Y = fit$data[["Y"]],
+    n = fit$data[["n"]]
+  ) %>%
   mutate(
     w = w_unit / sum(n / sum(n) * w_unit), # model-based weights
     Y_w = Y * w
   ) 
-with(weights, sum(n * Y_w / sum(n)))# mean estimate
+
+# mean estimate
+with(weights, sum(n * Y_w / sum(n)))
