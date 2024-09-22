@@ -13,3 +13,6 @@ if (!require(devtools)) {
 }
 install_github("stan-dev/rstanarm", ref = "structured_prior_merge", args = "--preclean", build_vignettes = FALSE)
 ```
+
+# Now the structured prior is implemented in the multilevel regression and poststratification interface: https://github.com/mrp-interface/shinymrp
+
